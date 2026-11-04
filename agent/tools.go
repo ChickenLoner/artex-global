@@ -150,9 +150,9 @@ type WriteCounts struct {
 // "explored but persisted nothing" signal (Total == 0).
 func (w WriteCounts) Total() int { return w.Facts + w.Assets + w.Findings }
 
-// String renders the per-kind breakdown for logs, e.g. "事实1 资产25 漏洞0".
+// String renders the per-kind breakdown for logs, e.g. "facts 1 assets 25 findings 0".
 func (w WriteCounts) String() string {
-	return fmt.Sprintf("事实%d 资产%d 漏洞%d", w.Facts, w.Assets, w.Findings)
+	return fmt.Sprintf("facts %d assets %d findings %d", w.Facts, w.Assets, w.Findings)
 }
 
 // Writes reports what this run wrote back, split by node kind (so the engine can
@@ -322,7 +322,7 @@ func (t *ToolSet) writeExpTool(name, desc string, schema map[string]any, run fun
 func (t *ToolSet) needExploration(name string, run func(context.Context, json.RawMessage) (actool.Result, error)) func(context.Context, json.RawMessage) (actool.Result, error) {
 	return func(ctx context.Context, in json.RawMessage) (actool.Result, error) {
 		if t.ts == nil {
-			return actool.Errorf(name + " 需要任务上下文（探索图）：当前 agent 不在某个任务内运行，取不到任务的探索图，该工具不可用。请在任务内使用它，或改用带 task_id 的跨任务读取工具（get_task_node_detail / list_task_findings / get_task_graph 等）。"), nil
+			return actool.Errorf(name + " requires task context (the exploration graph): the current agent is not running inside a task and cannot get the task's exploration graph, so this tool is unavailable. Use it inside a task, or switch to a cross-task read tool that takes task_id (get_task_node_detail / list_task_findings / get_task_graph, etc.)."), nil
 		}
 		return run(ctx, in)
 	}
@@ -529,10 +529,10 @@ func (t *ToolSet) graphOverviewData() map[string]any {
 					m["denominator"] = cov.Denominator
 					m["tested"] = cov.Tested
 					m["by_type"] = cov.ByType
-					m["note"] = "coverage资产测试覆盖度（包括接口等各种相关资产），粗略估计、仅供参考：包含当前任务与直接关联任务的 scope、事实锚点；关联 scope 只读。容器型资产/大量枚举会让它偏低，勿据此认为已测完；可用 add_task_scope 增补本任务范围、list_untested_assets 看未测资产【通常不调用list_untested_assets，按照任务推进即可】；"
+					m["note"] = "Coverage is the asset testing coverage (including endpoints and other related assets), a rough estimate for reference only: it includes the scope and fact anchors of the current task and directly linked tasks; linked scope is read-only. Container-type assets / large enumerations push it low, so do not conclude testing is complete from it; you can use add_task_scope to extend this task's scope and list_untested_assets to view untested assets (list_untested_assets is normally not needed; just keep advancing the task); "
 					if cov.Denominator == 0 {
 						m["pct"] = nil
-						m["status"] = "范围未锚定"
+						m["status"] = "scope not anchored"
 					} else {
 						m["pct"] = cov.Pct
 					}
@@ -999,14 +999,14 @@ func (t *ToolSet) nodeDetail() actool.CoreTool {
 			_ = json.Unmarshal(in, &a)
 			id := pid(a.ID)
 			if id <= 0 {
-				return actool.Errorf("id 必填"), nil
+				return actool.Errorf("id is required"), nil
 			}
 			n, err := t.ts.GetNodeWithSources(id)
 			if err != nil {
 				return actool.Errorf(err.Error()), nil
 			}
 			if n == nil {
-				return actool.Errorf(fmt.Sprintf("未找到探索节点 %d。若你想查的是资产，请用 list_assets / asset_neighbors（资产与探索节点是不同的 id 空间，资产 id 不能传给 node_detail）。", id)), nil
+				return actool.Errorf(fmt.Sprintf("Exploration node %d not found. If you meant to look up an asset, use list_assets / asset_neighbors (assets and exploration nodes use different id spaces; an asset id cannot be passed to node_detail).", id)), nil
 			}
 			if err := t.ts.PopulateFindingTrafficIDs([]*db.Node{n}); err != nil {
 				return actool.Errorf(err.Error()), nil
@@ -1031,17 +1031,17 @@ type intentItem struct {
 // 这样"每个意图都连到 fact 节点、且是发现驱动而非凭空规划"从创建路径上被强制。
 func (t *ToolSet) addOneIntent(it intentItem) (int64, error) {
 	if strings.TrimSpace(it.Summary) == "" {
-		return 0, fmt.Errorf("summary 不能为空")
+		return 0, fmt.Errorf("summary must not be empty")
 	}
 	// 先校验锚点（建节点前，避免坏锚点留下孤儿意图）。
 	parents := pidList(it.ParentIDs)
 	for _, pidv := range parents {
 		n, err := t.ts.GetNodeWithSources(pidv)
 		if err != nil || n == nil {
-			return 0, fmt.Errorf("parent_id %d 不存在于本任务或直接关联任务：parent_ids 必须是已存在的【事实(fact)/发现(finding)】节点 id；顶层全新方向请留空 parent_ids", pidv)
+			return 0, fmt.Errorf("parent_id %d does not exist in this task or directly linked tasks: parent_ids must be ids of existing fact/finding nodes; leave parent_ids empty for a brand-new top-level direction", pidv)
 		}
 		if n.Kind != db.KindFact && n.Kind != db.KindFinding {
-			return 0, fmt.Errorf("parent_id %d 是 %q 节点，不能作为意图锚点：意图只能锚在已确认的【事实(fact)/发现(finding)】上，不能挂在意图/目标/提示上；顶层全新方向请留空 parent_ids", pidv, n.Kind)
+			return 0, fmt.Errorf("parent_id %d is a %q node and cannot be an intent anchor: an intent can only be anchored on confirmed fact/finding nodes, not on intents/goals/hints; leave parent_ids empty for a brand-new top-level direction", pidv, n.Kind)
 		}
 	}
 	priority := it.Priority
@@ -1053,11 +1053,11 @@ func (t *ToolSet) addOneIntent(it intentItem) (int64, error) {
 	if t.as != nil && len(anchors) > 0 {
 		hits, err := t.as.CheckAssetsIntercept(t.taskID, anchors)
 		if err != nil {
-			return 0, fmt.Errorf("资产拦截校验失败：%w", err)
+			return 0, fmt.Errorf("asset intercept check failed: %w", err)
 		}
 		if len(hits) > 0 {
 			var b strings.Builder
-			fmt.Fprintf(&b, "意图「%s」绑定的资产未通过测试范围校验，请停止对相关资产进行测试：", it.Summary)
+			fmt.Fprintf(&b, "The assets bound to intent \"%s\" failed the test-scope check; stop testing the related assets:", it.Summary)
 			for _, h := range hits {
 				fmt.Fprintf(&b, "\n - %s", h.Describe())
 			}
@@ -1170,15 +1170,15 @@ func (t *ToolSet) proveGoal() actool.CoreTool {
 			_ = json.Unmarshal(in, &a)
 			goal, ev := pid(a.GoalID), pid(a.EvidenceID)
 			if goal == 0 || ev == 0 {
-				return actool.Errorf("goal_id 和 evidence_id 必填"), nil
+				return actool.Errorf("goal_id and evidence_id are required"), nil
 			}
 			goalNode, err := t.ts.GetNode(goal)
 			if err != nil || goalNode == nil || goalNode.Kind != db.KindGoal {
-				return actool.Errorf("goal_id 必须是本任务的目标节点（关联任务目标只读）"), nil
+				return actool.Errorf("goal_id must be a goal node of this task (goals of linked tasks are read-only)"), nil
 			}
 			evidenceNode, err := t.ts.GetNodeWithSources(ev)
 			if err != nil || evidenceNode == nil || (evidenceNode.Kind != db.KindFact && evidenceNode.Kind != db.KindFinding) {
-				return actool.Errorf("evidence_id 必须是本任务或直接关联任务的事实/漏洞节点"), nil
+				return actool.Errorf("evidence_id must be a fact/finding node of this task or a directly linked task"), nil
 			}
 			_ = t.ts.Link(ev, db.RelProves, goal)
 			_ = t.ts.SetNodeState(goal, "met")
@@ -1194,8 +1194,8 @@ func (t *ToolSet) proveGoal() actool.CoreTool {
 				}
 				if allMet {
 					t.GoalMet = true
-					t.Reason = fmt.Sprintf("所有 %d 个目标均已 met（最后由 goal %d 触发）", len(goals), goal)
-					return actool.Text(fmt.Sprintf("goal %d marked met；本任务所有目标均已达成，任务自动判定完成", goal)), nil
+					t.Reason = fmt.Sprintf("All %d goals are met (last triggered by goal %d)", len(goals), goal)
+					return actool.Text(fmt.Sprintf("goal %d marked met; all goals of this task are achieved, so the task is automatically judged complete", goal)), nil
 				}
 			}
 			return actool.Text(fmt.Sprintf("goal %d marked met", goal)), nil
@@ -1236,7 +1236,7 @@ func (t *ToolSet) addFinding() actool.CoreTool {
 			return actool.Errorf(err.Error()), nil
 		}
 		if t.ts == nil {
-			return actool.Errorf("report_finding 需要任务上下文；平台对话请通过 add_task_hint 向对应任务交接漏洞，并在提示中携带已有的 traffic_refs，由任务 Agent 登记。已登记漏洞可用 bind_finding_traffic 补绑。"), nil
+			return actool.Errorf("report_finding requires task context; in a platform conversation, hand the vulnerability over to the corresponding task via add_task_hint, carrying any existing traffic_refs in the hint, and let the task Agent register it. An already registered finding can be bound later with bind_finding_traffic."), nil
 		}
 		// Auto-binding off: ignore the evidence params instead of rejecting the call.
 		// stripTrafficParameters already removes them from the advertised schema, but
@@ -1247,7 +1247,7 @@ func (t *ToolSet) addFinding() actool.CoreTool {
 			a.TrafficRefs, a.EvidenceHintID = nil, nil
 		}
 		if len(a.EvidenceHintID) > 0 && pid(a.EvidenceHintID) <= 0 {
-			return actool.Errorf("evidence_hint_id 必须为有效的提示节点 ID；无交接提示时省略"), nil
+			return actool.Errorf("evidence_hint_id must be a valid hint node ID; omit it when there is no handoff hint"), nil
 		}
 		refs, err := t.findingRefsFromHint(pid(a.EvidenceHintID), a.TrafficRefs)
 		if err != nil {
@@ -1258,7 +1258,7 @@ func (t *ToolSet) addFinding() actool.CoreTool {
 		if t.findingRecorder != nil {
 			recorded, err = t.findingRecorder.Record(ctx, input, refs)
 		} else if len(refs) > 0 {
-			return actool.Errorf("流量证据存储不可用；未登记漏洞"), nil
+			return actool.Errorf("Traffic evidence storage is unavailable; the finding was not registered"), nil
 		} else {
 			recorded, err = t.ts.RecordFinding(ctx, input)
 		}
@@ -1287,9 +1287,9 @@ func (t *ToolSet) addFinding() actool.CoreTool {
 		}{RecordedFinding: recorded, EvidenceStatus: "bound"}
 		if len(recorded.Traffic.Bindings) == 0 {
 			result.EvidenceStatus = "not_bound"
-			result.EvidenceNote = "漏洞已保存，未绑定流量。TCP/无包情形可正常继续；若已有核实的 HTTP 流量，请用可用的 bind_finding_traffic 或漏洞页面补绑，再完成证据交接。不要重复创建漏洞。"
+			result.EvidenceNote = "The finding is saved but no traffic is bound. For TCP / no-packet cases you can continue normally; if you have verified HTTP traffic, bind it afterwards with the available bind_finding_traffic or on the finding page, then complete the evidence handoff. Do not create the finding again."
 			if !findingTrafficBindingEnabled() {
-				result.EvidenceNote = "漏洞已保存。Agent 自动绑定流量已关闭，可在页面人工关联流量。"
+				result.EvidenceNote = "The finding is saved. Automatic traffic binding by the Agent is turned off; traffic can be linked manually on the page."
 			}
 		}
 		raw, _ := json.Marshal(result)
@@ -1316,7 +1316,7 @@ type factItem struct {
 // 批量时的默认意图（本条未给 intent_id 时用）。
 func (t *ToolSet) recordOneFact(it factItem, defaultIntent int64) (int64, error) {
 	if strings.TrimSpace(it.Summary) == "" {
-		return 0, fmt.Errorf("summary 不能为空")
+		return 0, fmt.Errorf("summary must not be empty")
 	}
 	payload := map[string]any{"summary": it.Summary}
 	if it.Detail != "" {
@@ -1335,7 +1335,7 @@ func (t *ToolSet) recordOneFact(it factItem, defaultIntent int64) (int64, error)
 	if intent > 0 {
 		node, err := t.ts.GetNode(intent)
 		if err != nil || node == nil || node.Kind != db.KindIntent {
-			return 0, fmt.Errorf("intent_id 必须是本任务的意图（关联任务意图只读）")
+			return 0, fmt.Errorf("intent_id must be an intent of this task (intents of linked tasks are read-only)")
 		}
 	}
 	// a fact is its OWN node kind (distinct from a vuln finding).
@@ -1414,10 +1414,10 @@ type hintItem struct {
 // addOneHint 挂一条 hint 节点(active/human)到探索图,可锚定资产,返回 id。
 func (t *ToolSet) addOneHint(it hintItem) (int64, error) {
 	if len(it.TrafficRefs) > 0 && !findingTrafficBindingEnabled() {
-		return 0, fmt.Errorf("Agent 自动绑定流量已关闭，未保存携带 traffic_refs 的提示；可在系统设置开启，或仅交接文字")
+		return 0, fmt.Errorf("Automatic traffic binding by the Agent is turned off, so the hint carrying traffic_refs was not saved; enable it in system settings, or hand over text only")
 	}
 	if strings.TrimSpace(it.Text) == "" {
-		return 0, fmt.Errorf("text 不能为空")
+		return 0, fmt.Errorf("text must not be empty")
 	}
 	var anchors []int64
 	for _, raw := range it.AssetIDs {
@@ -1449,7 +1449,7 @@ type goalItem struct {
 func (t *ToolSet) addOneGoal(it goalItem) (int64, error) {
 	text := strings.TrimSpace(it.Text)
 	if text == "" {
-		return 0, fmt.Errorf("text 不能为空")
+		return 0, fmt.Errorf("text must not be empty")
 	}
 	payload := map[string]any{"text": text}
 	if vc := strings.TrimSpace(it.VulnClass); vc != "" {
@@ -1483,7 +1483,7 @@ func (t *ToolSet) setGoals() actool.CoreTool {
 		}),
 		func(_ context.Context, in json.RawMessage) (actool.Result, error) {
 			if t.ts == nil {
-				return actool.Errorf("set_goals 未启用: ExplorationStore 未初始化"), nil
+				return actool.Errorf("set_goals is not enabled: ExplorationStore is not initialized"), nil
 			}
 			var a struct {
 				Goals    []goalItem `json:"goals"`
@@ -1549,14 +1549,14 @@ type constraintItem struct {
 func (t *ToolSet) addOneConstraint(it constraintItem) (int64, error) {
 	text := strings.TrimSpace(it.Text)
 	if text == "" {
-		return 0, fmt.Errorf("text 不能为空")
+		return 0, fmt.Errorf("text must not be empty")
 	}
 	kind := strings.TrimSpace(strings.ToLower(it.Type))
 	if kind == "" {
 		kind = "deny" // 默认按禁止处理:未标注类型时更保守
 	}
 	if kind != "allow" && kind != "deny" {
-		return 0, fmt.Errorf("type 必须是 allow 或 deny")
+		return 0, fmt.Errorf("type must be allow or deny")
 	}
 	return t.ts.AddConstraint(kind, text, t.worker)
 }
@@ -1577,7 +1577,7 @@ func (t *ToolSet) setConstraints() actool.CoreTool {
 		}),
 		func(_ context.Context, in json.RawMessage) (actool.Result, error) {
 			if t.ts == nil {
-				return actool.Errorf("set_constraints 未启用: ExplorationStore 未初始化"), nil
+				return actool.Errorf("set_constraints is not enabled: ExplorationStore is not initialized"), nil
 			}
 			var a struct {
 				Constraints    []constraintItem `json:"constraints"`
@@ -1678,7 +1678,7 @@ func (t *ToolSet) killWorkTool() actool.CoreTool {
 		obj(map[string]any{"intent_id": idp("要终止的意图 id（= work 句柄）")}, "intent_id"),
 		func(_ context.Context, in json.RawMessage) (actool.Result, error) {
 			if t.killWork == nil {
-				return actool.Errorf("kill_work 当前不可用"), nil
+				return actool.Errorf("kill_work is currently unavailable"), nil
 			}
 			var a struct {
 				IntentID json.RawMessage `json:"intent_id"`
@@ -1686,16 +1686,16 @@ func (t *ToolSet) killWorkTool() actool.CoreTool {
 			_ = json.Unmarshal(in, &a)
 			id := pid(a.IntentID)
 			if id <= 0 {
-				return actool.Errorf("intent_id 必填"), nil
+				return actool.Errorf("intent_id is required"), nil
 			}
 			node, err := t.ts.GetNode(id)
 			if err != nil || node == nil || node.Kind != db.KindIntent {
-				return actool.Errorf("intent_id 必须是本任务的意图（关联任务意图只读）"), nil
+				return actool.Errorf("intent_id must be an intent of this task (intents of linked tasks are read-only)"), nil
 			}
 			if err := t.killWork(id); err != nil {
 				return actool.Errorf(err.Error()), nil
 			}
-			return actool.Text(fmt.Sprintf("已向意图 %d 的 work 发送终止信号", id)), nil
+			return actool.Text(fmt.Sprintf("Termination signal sent to the work of intent %d", id)), nil
 		})
 }
 
@@ -1711,7 +1711,7 @@ func (t *ToolSet) steerWorkTool() actool.CoreTool {
 		}, "intent_id", "message"),
 		func(_ context.Context, in json.RawMessage) (actool.Result, error) {
 			if t.steerWork == nil {
-				return actool.Errorf("steer_work 当前不可用"), nil
+				return actool.Errorf("steer_work is currently unavailable"), nil
 			}
 			var a struct {
 				IntentID json.RawMessage `json:"intent_id"`
@@ -1720,19 +1720,19 @@ func (t *ToolSet) steerWorkTool() actool.CoreTool {
 			_ = json.Unmarshal(in, &a)
 			id := pid(a.IntentID)
 			if id <= 0 {
-				return actool.Errorf("intent_id 必填"), nil
+				return actool.Errorf("intent_id is required"), nil
 			}
 			node, err := t.ts.GetNode(id)
 			if err != nil || node == nil || node.Kind != db.KindIntent {
-				return actool.Errorf("intent_id 必须是本任务的意图（关联任务意图只读）"), nil
+				return actool.Errorf("intent_id must be an intent of this task (intents of linked tasks are read-only)"), nil
 			}
 			if strings.TrimSpace(a.Message) == "" {
-				return actool.Errorf("message 必填"), nil
+				return actool.Errorf("message is required"), nil
 			}
 			if err := t.steerWork(id, a.Message); err != nil {
 				return actool.Errorf(err.Error()), nil
 			}
-			return actool.Text(fmt.Sprintf("已向意图 %d 的 work 注入纠偏指令（下一步生效）", id)), nil
+			return actool.Text(fmt.Sprintf("Course-correction instruction injected into the work of intent %d (takes effect at its next step)", id)), nil
 		})
 }
 
@@ -1747,14 +1747,14 @@ func (t *ToolSet) getWorkerOutput() actool.CoreTool {
 			_ = json.Unmarshal(in, &a)
 			id := pid(a.IntentID)
 			if id <= 0 {
-				return actool.Errorf("intent_id 必填"), nil
+				return actool.Errorf("intent_id is required"), nil
 			}
 			intentNode, err := t.ts.GetNodeWithSources(id)
 			if err != nil {
 				return actool.Errorf(err.Error()), nil
 			}
 			if intentNode == nil || intentNode.Kind != db.KindIntent {
-				return actool.Errorf("intent_id 不属于本任务或其直接关联任务"), nil
+				return actool.Errorf("intent_id does not belong to this task or its directly linked tasks"), nil
 			}
 			acts, _, err := t.ts.ActivityListWithSources(id, 0, 1000)
 			if err != nil {
@@ -1777,10 +1777,10 @@ func (t *ToolSet) getWorkerOutput() actool.CoreTool {
 			if pick == nil {
 				if intentNode.Inherited {
 					return jsonResult(inheritedMap(map[string]any{
-						"intent_id": id, "final_text": "（该 work 尚无任何输出）",
+						"intent_id": id, "final_text": "(this work has no output yet)",
 					}, intentNode.SourceTaskID))
 				}
-				return actool.Text("（该 work 尚无任何输出）"), nil
+				return actool.Text("(this work has no output yet)"), nil
 			}
 			detail, _ := t.ts.ActivityDetailWithSources(pick.ID)
 			if detail == "" {
@@ -1841,14 +1841,14 @@ func (t *ToolSet) getWorkerTrace() actool.CoreTool {
 			_ = json.Unmarshal(in, &a)
 			id := pid(a.IntentID)
 			if id <= 0 {
-				return actool.Errorf("intent_id 必填"), nil
+				return actool.Errorf("intent_id is required"), nil
 			}
 			intentNode, nodeErr := t.ts.GetNodeWithSources(id)
 			if nodeErr != nil {
 				return actool.Errorf(nodeErr.Error()), nil
 			}
 			if intentNode == nil || intentNode.Kind != db.KindIntent {
-				return actool.Errorf("intent_id 不属于本任务或其直接关联任务"), nil
+				return actool.Errorf("intent_id does not belong to this task or its directly linked tasks"), nil
 			}
 			// ③ detail drill-down by step ids, thinking excluded by the store.
 			if len(a.StepIDs) > 0 {
@@ -1896,8 +1896,8 @@ func (t *ToolSet) getWorkerTrace() actool.CoreTool {
 					// whether another call is worth it; the notice states the same in prose.
 					result["omitted_step_ids"] = omitted
 					result["notice"] = fmt.Sprintf(
-						"每次最多取 %d 个步骤的完整内容，本次已返回前 %d 个（%v），未取的 %d 个为 %v。"+
-							"若这些内容已足够定位，则无需再取剩余步骤；确需继续时，用这些 step_id 再调一次。",
+						"At most %d steps' full content can be fetched per call; this call returned the first %d (%v); the %d not fetched are %v."+
+							"If this content is enough to locate what you need, there is no need to fetch the remaining steps; if you do need to continue, call again with those step_ids.",
 						maxStepIDs, len(ids), ids, len(omitted), omitted)
 				}
 				if intentNode.Inherited {
@@ -1943,7 +1943,7 @@ func (t *ToolSet) searchAllWorkerTraces() actool.CoreTool {
 			}
 			_ = json.Unmarshal(in, &a)
 			if strings.TrimSpace(a.Q) == "" {
-				return actool.Errorf("q 必填"), nil
+				return actool.Errorf("q is required"), nil
 			}
 			// 排除调用者自身这条意图的步骤（worker 的自有 trace 已在其上下文里）。
 			acts, err := t.ts.ActivityTraceSearchAllWithSources(t.ownerNode, a.Q, a.Limit)

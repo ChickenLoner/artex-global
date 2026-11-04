@@ -4,7 +4,7 @@ status: experimental
 description: |
     Detects the control-framing string the ARTEX platform guard writes to its audit log when it
     blocks a tool call. Blocked calls are recorded with a message beginning with the literal
-    marker shown below (ARTEX platform control, non-target defence). Finding this marker in a
+    marker shown below (ARTEX platform control, non-target defence). Current ARTEX versions emit the English marker; older versions emitted the Chinese one, so both are matched. Finding this marker in a
     host's application or audit logs strongly supports that ARTEX ran on that host. This is a
     host and forensic indicator, not a target-side signal.
 references:
@@ -20,6 +20,7 @@ logsource:
     category: application
 detection:
     keywords:
+        - '[ARTEX PLATFORM CONTROL - NOT TARGET DEFENSE]'
         - '【ARTEX 平台管控·非目标防御】'
     condition: keywords
 falsepositives:

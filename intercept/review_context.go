@@ -3,7 +3,7 @@ package intercept
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"strings"
 )
 

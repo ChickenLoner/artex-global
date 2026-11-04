@@ -73,7 +73,7 @@ const (
 	errNotifyDigestRange   = "요약 주기는 1~1440분 사이여야 합니다"
 
 	// 사용자 대면 출력 언어 설정 (putSettings)
-	errOutputLanguageInvalid = "지원하지 않는 언어입니다(en·ko·zh·es·ja 중 하나여야 합니다)"
+	errOutputLanguageInvalid = "지원하지 않는 언어입니다(en·ko·zh·es·ja·th 중 하나여야 합니다)"
 
 	// 메인 에이전트 대화·세션 (newMainSession / chat)
 	errTaskDeletingNewSession = "작업을 삭제하는 중이라 새 세션을 만들 수 없습니다"

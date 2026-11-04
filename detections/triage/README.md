@@ -27,8 +27,8 @@ carries the same honest caveat as the matching Sigma rule or indicator row.
   The CA is the trust anchor of an adversary-in-the-middle traffic recorder (ATT&CK T1557).
 - **Log markers** — the enrichment prober UA `artex-enrich/1.0` ([`enrich/enrich.go`](../../enrich/enrich.go)),
   the self-update egress UA `artex-selfupdate` ([`selfupdate/github.go`](../../selfupdate/github.go)), and
-  the platform-guard audit marker ([`guard/guard.go`](../../guard/guard.go); kept verbatim, including the
-  non-ASCII framing, so the grep matches) in the log file(s) you point it at. Rotated logs compressed as
+  the platform-guard audit marker ([`guard/guard.go`](../../guard/guard.go); both the current English
+  marker and the legacy Chinese one older versions emitted, kept verbatim so the grep matches) in the log file(s) you point it at. Rotated logs compressed as
   `.gz`/`.bz2`/`.xz` are decompressed and scanned too, so the host's log history is covered; a format with
   no standard-library codec (`.zst`/`.lz4`) is reported as **skipped** rather than silently treated as
   clean — decompress it first or `grep` it by hand.

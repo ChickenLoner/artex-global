@@ -106,10 +106,11 @@ CA_RELPATH = os.path.join("_ca", "mitmproxy-ca-cert.pem")
 INDEX_RELPATH = os.path.join("_index", "index.sqlite")
 BLOBS_RELDIR = "_blobs"
 
-# Log markers. The guard marker is the original (untranslated) framing string the
-# platform guard writes to the audit log on a blocked tool call (guard/guard.go);
-# it is kept verbatim here because that is the exact byte sequence a responder
-# greps for, and translating it would stop the match.
+# Log markers. The guard marker is the framing string the platform guard writes to
+# the audit log on a blocked tool call (guard/guard.go). Current ARTEX versions emit
+# the ASCII English marker; older versions emitted the Chinese one, so both are
+# listed (LOG_MARKERS[2] legacy Chinese, LOG_MARKERS[3] English), kept verbatim
+# because that is the exact byte sequence a responder greps for.
 LOG_MARKERS = [
     {
         "value": "artex-enrich/1.0",
@@ -127,6 +128,13 @@ LOG_MARKERS = [
     },
     {
         "value": "【ARTEX 平台管控·非目标防御】",
+        "title": "platform-guard audit-log framing marker (legacy Chinese)",
+        "source": "guard/guard.go",
+        "severity": "high",
+        "caveat": "Also appears in logs that merely quote this defense guide or the ARTEX source.",
+    },
+    {
+        "value": "[ARTEX PLATFORM CONTROL - NOT TARGET DEFENSE]",
         "title": "platform-guard audit-log framing marker",
         "source": "guard/guard.go",
         "severity": "high",
@@ -766,9 +774,10 @@ def self_test():
             f.write("GET / HTTP/1.1 artex-enrich/1.0\n")
             f.write("outbound artex-selfupdate to release host\n")
             f.write("blocked: " + LOG_MARKERS[2]["value"] + " this operation is denied\n")
+            f.write("blocked: " + LOG_MARKERS[3]["value"] + " This operation is forbidden.\n")
             f.write("a normal line with no markers\n")
         lf, _ = scan_logs([logpath], [])
-        check("logs: all three markers fire", len(lf) == 3)
+        check("logs: all four markers fire (legacy + English guard marker)", len(lf) == 4)
 
         # 3b. rotated (compressed) logs under a --log-dir are scanned too, not
         # silently skipped. A responder pointing at /var/log/artex expects the

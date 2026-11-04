@@ -275,7 +275,7 @@ const (
 	// agent(planner/worker/主 agent/对话)由 noa 接管上下文压缩,取代内置 compaction。
 	// 每 run 读一次,切换只影响之后启动的 run。
 	settingNoaCompaction = "noa_compaction"
-	// settingOutputLanguage 는 사용자 대면 출력 언어("en"/"ko"/"zh"/"es")의 런타임 값이다.
+	// settingOutputLanguage 는 사용자 대면 출력 언어("en"/"ko"/"zh"/"es"/"ja"/"th")의 런타임 값이다.
 	// 비어 있으면 config.Language()(ARTEX_LANG·설정 파일·기본값 한국어)로 떨어진다. 에이전트
 	// 출력 언어(langDirective)와 백엔드 메시지 카탈로그가 모두 이 값을 따른다.
 	settingOutputLanguage = "output_language"
