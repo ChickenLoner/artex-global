@@ -334,17 +334,17 @@ func ValidateProxyURL(raw string) (*url.URL, error) {
 	raw = strings.TrimSpace(raw)
 	u, err := url.Parse(raw)
 	if err != nil {
-		return nil, fmt.Errorf("解析代理地址 %q: %w", raw, err)
+		return nil, fmt.Errorf("parse proxy address %q: %w", raw, err)
 	}
 	switch u.Scheme {
 	case "http", "https", "socks5":
 	case "":
 		return nil, fmt.Errorf("代理 %q 缺少协议(用 http://、https:// 或 socks5://)", raw)
 	default:
-		return nil, fmt.Errorf("不支持的代理协议 %q(用 http、https 或 socks5)", u.Scheme)
+		return nil, fmt.Errorf("unsupported proxy scheme %q (use http, https or socks5)", u.Scheme)
 	}
 	if u.Host == "" {
-		return nil, fmt.Errorf("代理 %q 缺少主机地址", raw)
+		return nil, fmt.Errorf("proxy %q is missing a host address", raw)
 	}
 	return u, nil
 }
@@ -689,7 +689,7 @@ func (t *Traffic) blobPath(hash string) (string, error) {
 	// Validated as pure hex before touching the filesystem, so a crafted hash can
 	// never traverse out of the blob directory.
 	if !blobHashRe.MatchString(hash) {
-		return "", fmt.Errorf("非法的 blob hash")
+		return "", fmt.Errorf("illegal blob hash")
 	}
 	for _, p := range []string{
 		filepath.Join(t.dir, "_blobs", "sha256", hash[:2], hash+".bin"),
@@ -699,7 +699,7 @@ func (t *Traffic) blobPath(hash string) (string, error) {
 			return p, nil
 		}
 	}
-	return "", fmt.Errorf("blob %s 不存在", hash)
+	return "", fmt.Errorf("blob %s does not exist", hash)
 }
 
 // Blob opens a spilled body for streaming; the caller must close the file.
@@ -967,7 +967,7 @@ FROM exchange_bodies b JOIN exchanges e ON e.id=b.id WHERE b.id=?`, id).
 		return "", "", err
 	}
 	if strings.TrimSpace(rel) == "" {
-		return "", "", fmt.Errorf("exchange %s 无正文记录", id)
+		return "", "", fmt.Errorf("exchange %s has no body record", id)
 	}
 	rb, _ := os.ReadFile(filepath.Join(t.dir, rel, "request.http"))
 	pb, _ := os.ReadFile(filepath.Join(t.dir, rel, "response.http"))
@@ -1934,9 +1934,9 @@ func (t *Traffic) query(host, contains, bodyContains string, page, limit int) ([
 		cond, arg, ok := t.ftsFilter(b)
 		if !ok {
 			if !t.fts {
-				return nil, fmt.Errorf("当前实例未启用全文索引，无法按正文搜索")
+				return nil, fmt.Errorf("Full-text indexing is not enabled on this instance; body search is unavailable")
 			}
-			return nil, fmt.Errorf("正文搜索关键词至少需要 %d 个字符（当前 %d 个）", minTrigram, utf8.RuneCountInString(b))
+			return nil, fmt.Errorf("Body search keywords need at least %d characters (currently %d)", minTrigram, utf8.RuneCountInString(b))
 		}
 		q += ` AND ` + cond
 		args = append(args, arg)
@@ -1966,12 +1966,12 @@ func (t *Traffic) query(host, contains, bodyContains string, page, limit int) ([
 func normalizeSearchHost(raw string) (host, port string, err error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return "", "", errors.New("host 为必填参数")
+		return "", "", errors.New("host is required")
 	}
 	if strings.Contains(raw, "://") {
 		u, parseErr := url.Parse(raw)
 		if parseErr != nil || u.Host == "" {
-			return "", "", fmt.Errorf("无法解析 host：%q", raw)
+			return "", "", fmt.Errorf("cannot parse host: %q", raw)
 		}
 		host, port = u.Hostname(), u.Port()
 	} else if h, p, splitErr := net.SplitHostPort(raw); splitErr == nil {
@@ -1983,12 +1983,12 @@ func normalizeSearchHost(raw string) (host, port string, err error) {
 	}
 	host = strings.Trim(strings.TrimSpace(host), "[]")
 	if host == "" {
-		return "", "", fmt.Errorf("无法解析 host：%q", raw)
+		return "", "", fmt.Errorf("cannot parse host: %q", raw)
 	}
 	if port != "" {
 		p, parseErr := strconv.Atoi(port)
 		if parseErr != nil || p < 1 || p > 65535 {
-			return "", "", fmt.Errorf("端口无效：%q", port)
+			return "", "", fmt.Errorf("invalid port: %q", port)
 		}
 		port = strconv.Itoa(p)
 	}
@@ -2028,14 +2028,14 @@ func (t *Traffic) Tools() []actool.CoreTool {
 			}
 			_ = json.Unmarshal(in, &a)
 			if strings.TrimSpace(a.Host) == "" {
-				return actool.Errorf("host 为必填参数：请指定裸主机、主机:端口或完整 URL，避免全库扫描。"), nil
+				return actool.Errorf("host is required: specify a bare host, host:port or a full URL to avoid scanning the whole store."), nil
 			}
 			rows, err := t.query(a.Host, a.Contains, a.BodyContains, a.Page, a.Limit)
 			if err != nil {
 				return actool.Errorf(err.Error()), nil
 			}
 			if len(rows) == 0 {
-				return actool.Text("无匹配流量。"), nil
+				return actool.Text("No matching traffic."), nil
 			}
 			// 精简为最小索引：仅保留定位所需字段 + 响应码/长度，不带任何响应内容。
 			type liteRow struct {
@@ -2104,11 +2104,11 @@ func (t *Traffic) Tools() []actool.CoreTool {
 				return actool.Errorf(err.Error()), nil
 			}
 			if len(data) == 0 {
-				return actool.Text(fmt.Sprintf("偏移 %d 已超出内容长度（总长 %d 字节）。", a.Offset, total)), nil
+				return actool.Text(fmt.Sprintf("Offset %d exceeds the content length (total %d bytes).", a.Offset, total)), nil
 			}
-			head := fmt.Sprintf("[offset=%d 本次=%d 总长=%d]\n", a.Offset, len(data), total)
+			head := fmt.Sprintf("[offset=%d returned=%d total=%d]\n", a.Offset, len(data), total)
 			if isBinaryBody("", data) {
-				return actool.Text(head + "二进制内容，以十六进制展示前 512 字节：\n" + hex.EncodeToString(clipBytes(data, 512))), nil
+				return actool.Text(head + "Binary content; first 512 bytes shown in hex:\n" + hex.EncodeToString(clipBytes(data, 512))), nil
 			}
 			return actool.Text(head + truncateUTF8(data, len(data))), nil
 		},
@@ -2126,5 +2126,5 @@ func clip(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	return s[:max] + fmt.Sprintf("\n... [截断，共 %d 字节；完整在流量文件树] ...", len(s))
+	return s[:max] + fmt.Sprintf("\n... [truncated, %d bytes in total; the full content is in the traffic file tree] ...", len(s))
 }

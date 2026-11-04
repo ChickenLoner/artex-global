@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -146,6 +147,9 @@ const (
 // Audit/history rows keep the raw reason (see Interceptor.Log); only the
 // model-facing tool_result carries this framing.
 func systemBlockMessage(reason string) string {
+	// "[模型]" is an internal sentinel the DB and UI use to classify model-judged
+	// decisions; it must not leak into the text the model and the chat display.
+	reason = strings.TrimSpace(strings.TrimPrefix(reason, "[模型]"))
 	return BlockMarker + " This call was blocked by the platform. " +
 		"Reason: " + reason + ". This operation is forbidden."
 }

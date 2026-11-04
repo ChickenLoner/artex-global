@@ -211,11 +211,11 @@ func boundChatMentionValue(value any) any {
 	switch v := value.(type) {
 	case string:
 		if utf8.RuneCountInString(v) > 16000 {
-			return string([]rune(v)[:16000]) + "\n[字段过长，已截断]"
+			return string([]rune(v)[:16000]) + "\n[field too long; truncated]"
 		}
 	case []any:
 		if len(v) > 100 {
-			v = append(v[:100:100], "[仅展示前 100 条，已截断]")
+			v = append(v[:100:100], "[only the first 100 items are shown; truncated]")
 		}
 		for i := range v {
 			v[i] = boundChatMentionValue(v[i])

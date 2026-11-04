@@ -3,6 +3,7 @@ package guard
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/Autumn-27/norma/hook"
@@ -52,3 +53,13 @@ func TestSystemBlockMessageFraming(t *testing.T) {
 }
 
 var _ = hook.PreToolUse
+
+func TestSystemBlockMessageStripsModelSentinel(t *testing.T) {
+	got := systemBlockMessage("[模型] Deletes a production file")
+	if strings.Contains(got, "[模型]") {
+		t.Fatalf("sentinel leaked into block message: %q", got)
+	}
+	if want := systemBlockMessage("Deletes a production file"); got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
