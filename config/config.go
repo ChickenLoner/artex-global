@@ -39,7 +39,7 @@ type Config struct {
 var SupportedLanguages = []string{"en", "ko", "zh", "es", "ja", "th"}
 
 // DefaultLanguage is the out-of-box user-facing language when nothing is
-// configured. artex-global defaults to English; Korean, Chinese, Spanish and
+// configured. artex-global defaults to English; Korean, Chinese, Spanish, Thai and
 // Japanese are selectable at runtime via the language setting (and ARTEX_LANG).
 const DefaultLanguage = "en"
 

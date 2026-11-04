@@ -49,6 +49,11 @@ func TestStartupMessageSwitchesLanguage(t *testing.T) {
 		if got := mustDSNErr(t); got == "" {
 			t.Errorf("%s startup error should be non-empty", lang)
 		}
+		if lang == "th" {
+			if got := mustDSNErr(t); hasHangul(got) || !containsStr(got, "ฐานข้อมูล") {
+				t.Errorf("th startup error should be Thai without Hangul: %q", got)
+			}
+		}
 	}
 }
 
