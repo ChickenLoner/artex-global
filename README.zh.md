@@ -4,7 +4,7 @@
 
 AI 自主渗透测试系统（Go 后端 + Next.js 前端）
 
-中文 · [English](README.md) · [한국어](README.ko.md) · [Español](README.es.md) · [日本語](README.ja.md)
+[English](README.md) · [한국어](README.ko.md) · 中文 · [Español](README.es.md) · [日本語](README.ja.md) · [ไทย](README.th.md)
 
 🌐 **在线 Demo**： [https://artex-demo.vercel.app/](https://artex-demo.vercel.app/)
 
@@ -12,7 +12,7 @@ AI 自主渗透测试系统（Go 后端 + Next.js 前端）
 
 ---
 
-> ⚠️ **安全与合规提示（全球多语言版本）**：本仓库是 [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX) 的多语言本地化 fork（默认英文，可在设置中切换韩文·中文·西班牙文·日文），仅供在获得授权的环境中、以防御与检测为目的使用。2026 年 10 月有韩国媒体报道称，调查机构在针对韩国金融机构的个人信息泄露事件中发现了 ARTEX 被使用的迹象（调查进行中）。请勿对未经书面授权的系统进行扫描、探测或利用。完整警告请见 [README.ko.md（한국어）](README.ko.md) 与 [README.md（English）](README.md)。
+> ⚠️ **安全与合规提示（全球多语言版本）**：本仓库是 [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX) 的多语言本地化 fork（默认英文，可在设置中切换韩文·中文·西班牙文·日文·泰文），仅供在获得授权的环境中、以防御与检测为目的使用。2026 年 10 月有韩国媒体报道称，调查机构在针对韩国金融机构的个人信息泄露事件中发现了 ARTEX 被使用的迹象（调查进行中）。请勿对未经书面授权的系统进行扫描、探测或利用。完整警告请见 [README.ko.md（한국어）](README.ko.md) 与 [README.md（English）](README.md)。
 
 ---
 

@@ -3531,7 +3531,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.OutputLanguage != nil {
-		// 지원 언어("en"/"ko"/"zh"/"es")만 받는다. 에이전트 훅이 매 턴 읽으므로 즉시
+		// 지원 언어("en"/"ko"/"zh"/"es"/"ja"/"th")만 받는다. 에이전트 훅이 매 턴 읽으므로 즉시
 		// 적용되고 에이전트를 다시 생성할 필요가 없다.
 		lang := config.NormalizeLanguage(*req.OutputLanguage)
 		if lang == "" {

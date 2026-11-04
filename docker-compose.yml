@@ -36,7 +36,7 @@ services:
       ARTEX_ADMIN_PASSWORD: ${ARTEX_ADMIN_PASSWORD:-}
       # Allowed browser cross-origin list (comma-separated). The embedded UI is same-origin, so this is normally left empty.
       ARTEX_CORS_ORIGINS: ${ARTEX_CORS_ORIGINS:-}
-      # Default server-side output language (en, ko, zh, es, ja). If empty, the default is English. For agent output and error messages, the "Display language"
+      # Default server-side output language (en, ko, zh, es, ja, th). If empty, the default is English. For agent output and error messages, the "Display language"
       # in the settings screen takes precedence; the server console log follows only this value.
       ARTEX_LANG: ${ARTEX_LANG:-}
     ports:

@@ -46,8 +46,8 @@ jobs:
       - name: Unit tests (merge gate, vitest)
         # Catches regressions in pure logic (getInitials/formatCurrency, i18n config, statusMeta) and i18n key consistency before merge.
         run: npm run test -- --run
-      - name: i18n locale key consistency (merge gate, 5 locales match ko)
-        # Checks that the key sets of en/zh/es/ja are exactly the same as ko.json (both missing and extra keys fail).
+      - name: i18n locale key consistency (merge gate, 6 locales match ko)
+        # Checks that the key sets of en/zh/es/ja/th are exactly the same as ko.json (both missing and extra keys fail).
         run: npm run check:i18n
       - name: build:static (merge gate, includes type checking)
         run: npm run build:static
