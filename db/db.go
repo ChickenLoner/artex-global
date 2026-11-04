@@ -283,6 +283,9 @@ ON CONFLICT (name) DO NOTHING`,
 	if err := d.seedDefaultAssetInterceptRules(); err != nil {
 		return fmt.Errorf("seed asset intercept rules: %w", err)
 	}
+	if err := d.migrateInterceptRulesI18n(); err != nil {
+		return fmt.Errorf("migrate intercept rules i18n: %w", err)
+	}
 	return nil
 }
 
@@ -299,10 +302,10 @@ func (d *DB) seedDefaultAssetInterceptRules() error {
 		pattern string
 		note    string
 	}{
-		{"fuzzy_domain", ".gov", "[内置] 政府网站 (.gov)"},
-		{"fuzzy_domain", ".gov.cn", "[内置] 政府网站 (.gov.cn)"},
-		{"fuzzy_domain", ".edu", "[内置] 教育网站 (.edu)"},
-		{"fuzzy_domain", ".edu.cn", "[内置] 教育网站 (.edu.cn)"},
+		{"fuzzy_domain", ".gov", "[Built-in] Government sites (.gov)"},
+		{"fuzzy_domain", ".gov.cn", "[Built-in] Government sites (.gov.cn)"},
+		{"fuzzy_domain", ".edu", "[Built-in] Education sites (.edu)"},
+		{"fuzzy_domain", ".edu.cn", "[Built-in] Education sites (.edu.cn)"},
 	}
 	for _, r := range rules {
 		if _, err := d.Exec(`
@@ -362,121 +365,121 @@ func (d *DB) seedDefaultInterceptRules() error {
 	rules := []rule{
 		// ── 系统破坏性命令 (priority 100) ──────────────────────────────────
 		{
-			name:     "[内置] 递归强制删除 rm -rf",
+			name:     "[Built-in] Recursive forced delete rm -rf",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\brm\b.{0,80}(?:-[a-z]*r[a-z]*f[a-z]*|-[a-z]*f[a-z]*r[a-z]*|--recursive|--no-preserve-root)`,
 			action:   "deny",
-			message:  "禁止执行递归强制删除（rm -rf / rm --recursive），可能永久损坏系统或靶机环境",
+			message:  "Recursive forced deletion (rm -rf / rm --recursive) is forbidden; it can permanently damage the system or the target environment",
 			priority: 100,
 		},
 		{
-			name:     "[内置] 删除系统关键目录",
+			name:     "[Built-in] Delete critical system directories",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\brm\b[^"'\n]{0,60}["'\s](/|/etc|/bin|/usr|/boot|/var|/lib|/sys|/proc|/dev|/sbin|/root)`,
 			action:   "deny",
-			message:  "禁止删除系统关键路径",
+			message:  "Deleting critical system paths is forbidden",
 			priority: 100,
 		},
 		{
-			name:     "[内置] 磁盘格式化 mkfs",
+			name:     "[Built-in] Disk format mkfs",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\bmkfs\b`,
 			action:   "deny",
-			message:  "禁止格式化磁盘（mkfs）",
+			message:  "Formatting disks (mkfs) is forbidden",
 			priority: 100,
 		},
 		{
-			name:     "[内置] 覆写磁盘设备 dd",
+			name:     "[Built-in] Overwrite disk device with dd",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\bdd\b[^|\n]{0,100}\bof=\s*/dev/[a-zA-Z]`,
 			action:   "deny",
-			message:  "禁止使用 dd 覆写磁盘设备",
+			message:  "Overwriting disk devices with dd is forbidden",
 			priority: 100,
 		},
 		{
-			name:     "[内置] Fork 炸弹",
+			name:     "[Built-in] Fork bomb",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `:\(\)\s*\{[^}]*:\|:`,
 			action:   "deny",
-			message:  "禁止执行 Fork 炸弹",
+			message:  "Running a fork bomb is forbidden",
 			priority: 100,
 		},
 		{
-			name:     "[内置] 关机 / 重启",
+			name:     "[Built-in] Shutdown / reboot",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\b(?:shutdown|reboot|halt|poweroff|init\s+[06])\b`,
 			action:   "deny",
-			message:  "禁止执行关机或重启命令",
+			message:  "Shutdown or reboot commands are forbidden",
 			priority: 100,
 		},
 		{
-			name:     "[内置] 杀死全部进程",
+			name:     "[Built-in] Kill all processes",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\bkill\s+-9\s+-1\b|\bkillall\s+-9\b`,
 			action:   "deny",
-			message:  "禁止 kill -9 -1 或 killall -9（杀死所有进程）",
+			message:  "kill -9 -1 and killall -9 (kill all processes) are forbidden",
 			priority: 100,
 		},
 		{
-			name:     "[内置] 磁盘擦除 shred / wipe",
+			name:     "[Built-in] Disk wipe shred / wipe",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\b(?:shred|wipe)\b[^|\n]{0,80}/dev/[a-zA-Z]`,
 			action:   "deny",
-			message:  "禁止对磁盘设备执行 shred/wipe 擦除",
+			message:  "Wiping disk devices with shred/wipe is forbidden",
 			priority: 100,
 		},
 		{
-			name:     "[内置] 清空防火墙规则",
+			name:     "[Built-in] Flush firewall rules",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\biptables\s+(?:-F|--flush)\b|\bnft\s+flush\s+ruleset\b`,
 			action:   "deny",
-			message:  "禁止清空防火墙规则（iptables -F / nft flush）",
+			message:  "Flushing firewall rules (iptables -F / nft flush) is forbidden",
 			priority: 100,
 		},
 		// ── 数据库破坏性操作 (priority 90) ─────────────────────────────────
 		{
-			name:     "[内置] SQL DROP DATABASE / TABLE / SCHEMA",
+			name:     "[Built-in] SQL DROP DATABASE / TABLE / SCHEMA",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\bDROP\s+(?:DATABASE|TABLE|SCHEMA|INDEX|VIEW|TABLESPACE|USER|ROLE)\b`,
 			action:   "deny",
-			message:  "禁止执行 DROP 操作，可能不可逆地销毁数据库对象",
+			message:  "DROP statements are forbidden; they can irreversibly destroy database objects",
 			priority: 90,
 		},
 		{
-			name:     "[内置] SQL TRUNCATE",
+			name:     "[Built-in] SQL TRUNCATE",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\bTRUNCATE\s+(?:TABLE\s+)?\w`,
 			action:   "deny",
-			message:  "禁止执行 TRUNCATE，可能清空数据表所有数据",
+			message:  "TRUNCATE is forbidden; it can wipe all data in a table",
 			priority: 90,
 		},
 		{
-			name:     "[内置] MongoDB drop / dropDatabase",
+			name:     "[Built-in] MongoDB drop / dropDatabase",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\.(?:dropDatabase|dropCollection|drop)\s*\(`,
 			action:   "deny",
-			message:  "禁止执行 MongoDB drop 操作",
+			message:  "MongoDB drop operations are forbidden",
 			priority: 90,
 		},
 		{
-			name:     "[内置] Redis FLUSHALL / FLUSHDB",
+			name:     "[Built-in] Redis FLUSHALL / FLUSHDB",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\b(?:FLUSHALL|FLUSHDB)\b`,
 			action:   "deny",
-			message:  "禁止执行 Redis FLUSHALL / FLUSHDB，可能清空全部缓存数据",
+			message:  "Redis FLUSHALL / FLUSHDB is forbidden; it can wipe all cached data",
 			priority: 90,
 		},
 		// ── HTTP 破坏性请求 (priority 80) ──────────────────────────────────
@@ -485,39 +488,39 @@ func (d *DB) seedDefaultInterceptRules() error {
 		//   2. Python HTTP 客户端 .delete() 方法
 		//   3. JS/通用脚本里的 method: 'DELETE' / method="DELETE"
 		{
-			name:     "[内置] curl / wget 发送 DELETE 请求",
+			name:     "[Built-in] curl / wget HTTP DELETE request",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\bcurl\b[^|\n&;"]{0,300}(?:-X\s*DELETE|--request\s+DELETE|-XDELETE)|\bwget\b[^|\n&;"]{0,300}--method[=\s]+DELETE`,
 			action:   "deny",
-			message:  "禁止通过 curl/wget 发送 HTTP DELETE 请求，可能删除目标系统数据",
+			message:  "Sending HTTP DELETE requests via curl/wget is forbidden; it can delete data on the target system",
 			priority: 80,
 		},
 		{
-			name:     "[内置] Python HTTP 客户端 DELETE（requests/httpx/aiohttp）",
+			name:     "[Built-in] Python HTTP client DELETE (requests/httpx/aiohttp)",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\b(?:requests|httpx|aiohttp|urllib\.request)\.delete\s*\(|session\.delete\s*\(|client\.delete\s*\(`,
 			action:   "deny",
-			message:  "禁止使用 Python HTTP 客户端发送 DELETE 请求",
+			message:  "Sending DELETE requests with a Python HTTP client is forbidden",
 			priority: 80,
 		},
 		{
-			name:     "[内置] 脚本中声明 HTTP DELETE 方法（JS/通用）",
+			name:     "[Built-in] HTTP DELETE method in scripts (JS/generic)",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)axios\.delete\s*\(|method\s*[:=]\s*['"]DELETE['"]`,
 			action:   "deny",
-			message:  "禁止在脚本中声明并发送 HTTP DELETE 请求",
+			message:  "Declaring and sending HTTP DELETE requests in scripts is forbidden",
 			priority: 80,
 		},
 		{
-			name:     "[内置] 批量清空 / 清除接口路径",
+			name:     "[Built-in] Bulk clear / purge endpoint paths",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)/(?:clear|wipe|flush|purge|truncate|drop|destroy|factory[-_]reset|reset[-_]all)(?:[/?#"'\s]|$)`,
 			action:   "deny",
-			message:  "禁止调用批量清空或销毁类接口（/clear /wipe /flush /purge 等）",
+			message:  "Calling bulk clear or destroy endpoints (/clear /wipe /flush /purge etc.) is forbidden",
 			priority: 80,
 		},
 	}
@@ -537,7 +540,7 @@ ON CONFLICT DO NOTHING`,
 // seedDefaultInterceptRulesV2 migrates the two safety patterns that used to be
 // hard-coded in guard.go (destructive shell + data-exfil pipe) into ordinary
 // intercept rules. Gated by its own flag so it also lands on DBs that already ran
-// v1. Unlike the old guard.go floor, these are plain [内置] rules — the user can
+// v1. Unlike the old guard.go floor, these are plain [Built-in] rules — the user can
 // disable or delete them. The exfil rule ships DISABLED by default (its
 // curl/wget/nc pipe pattern mis-fires on legitimate CTF/pentest reverse-shell and
 // data-transfer pipes); enable it manually when exfil gating is actually wanted.
@@ -554,18 +557,18 @@ func (d *DB) seedDefaultInterceptRulesV2() error {
 		priority int
 	}{
 		{
-			name:     "[内置] 破坏性系统命令",
+			name:     "[Built-in] Destructive system commands",
 			pattern:  `(?i)\b(rm\s+-rf\s+/|mkfs|dd\s+if=|:\(\)\s*\{|shutdown|reboot|>\s*/dev/sd)`,
 			action:   "deny",
-			message:  "破坏性命令被拒绝（rm -rf / / mkfs / dd / fork bomb / 关机重启 / 覆写磁盘设备）",
+			message:  "Destructive command denied (rm -rf / / mkfs / dd / fork bomb / shutdown or reboot / overwriting disk devices)",
 			enabled:  true,
 			priority: 100,
 		},
 		{
-			name:     "[内置] 数据外泄管道",
+			name:     "[Built-in] Data exfiltration pipe",
 			pattern:  `(?i)(curl|wget|nc|ncat)\b[^|]*\b(\|\s*(curl|wget|nc))`,
 			action:   "deny",
-			message:  "疑似数据外泄管道被拒绝（命令输出经 curl/wget/nc 外传）",
+			message:  "Suspected data exfiltration pipe denied (command output sent out via curl/wget/nc)",
 			enabled:  false,
 			priority: 80,
 		},
@@ -603,16 +606,97 @@ func (d *DB) seedDefaultInterceptRulesV3() error {
 	if v, _, _ := d.GetSetting("intercept_default_rules_v3"); v == "done" {
 		return nil
 	}
-	const name = "[内置] 删除类接口路径"
+	const name = "[Built-in] Delete-style endpoint paths"
 	if _, err := d.Exec(`
 INSERT INTO intercept_rules(name, enabled, priority, match_target, match_type, pattern, action, message, timeout_enabled, timeout_seconds, timeout_action)
 SELECT $1, true, 80, 'tool_input', 'regex', $2, 'deny', $3, false, 60, 'deny'
 WHERE NOT EXISTS (SELECT 1 FROM intercept_rules WHERE name = $1)`,
 		name,
 		deleteEndpointPathPattern,
-		"禁止调用删除类接口（/delete /remove /unlink /erase 等），不论使用哪种 HTTP 方法——多数应用的删除接口用 GET/POST 就能触发，同样会真实删除目标数据",
+		"Calling delete-style endpoints (/delete /remove /unlink /erase etc.) is forbidden regardless of HTTP method; most apps expose deletion via GET/POST, which still really deletes target data",
 	); err != nil {
 		return fmt.Errorf("rule %q: %w", name, err)
 	}
 	return d.SetSetting("intercept_default_rules_v3", "done")
+}
+
+// legacyInterceptRuleI18n maps the original Chinese seeded name+message of each
+// built-in intercept rule to its English replacement.
+var legacyInterceptRuleI18n = []struct{ oldName, newName, oldMsg, newMsg string }{
+	{"[内置] 递归强制删除 rm -rf", "[Built-in] Recursive forced delete rm -rf",
+		"禁止执行递归强制删除（rm -rf / rm --recursive），可能永久损坏系统或靶机环境", "Recursive forced deletion (rm -rf / rm --recursive) is forbidden; it can permanently damage the system or the target environment"},
+	{"[内置] 删除系统关键目录", "[Built-in] Delete critical system directories",
+		"禁止删除系统关键路径", "Deleting critical system paths is forbidden"},
+	{"[内置] 磁盘格式化 mkfs", "[Built-in] Disk format mkfs",
+		"禁止格式化磁盘（mkfs）", "Formatting disks (mkfs) is forbidden"},
+	{"[内置] 覆写磁盘设备 dd", "[Built-in] Overwrite disk device with dd",
+		"禁止使用 dd 覆写磁盘设备", "Overwriting disk devices with dd is forbidden"},
+	{"[内置] Fork 炸弹", "[Built-in] Fork bomb",
+		"禁止执行 Fork 炸弹", "Running a fork bomb is forbidden"},
+	{"[内置] 关机 / 重启", "[Built-in] Shutdown / reboot",
+		"禁止执行关机或重启命令", "Shutdown or reboot commands are forbidden"},
+	{"[内置] 杀死全部进程", "[Built-in] Kill all processes",
+		"禁止 kill -9 -1 或 killall -9（杀死所有进程）", "kill -9 -1 and killall -9 (kill all processes) are forbidden"},
+	{"[内置] 磁盘擦除 shred / wipe", "[Built-in] Disk wipe shred / wipe",
+		"禁止对磁盘设备执行 shred/wipe 擦除", "Wiping disk devices with shred/wipe is forbidden"},
+	{"[内置] 清空防火墙规则", "[Built-in] Flush firewall rules",
+		"禁止清空防火墙规则（iptables -F / nft flush）", "Flushing firewall rules (iptables -F / nft flush) is forbidden"},
+	{"[内置] SQL DROP DATABASE / TABLE / SCHEMA", "[Built-in] SQL DROP DATABASE / TABLE / SCHEMA",
+		"禁止执行 DROP 操作，可能不可逆地销毁数据库对象", "DROP statements are forbidden; they can irreversibly destroy database objects"},
+	{"[内置] SQL TRUNCATE", "[Built-in] SQL TRUNCATE",
+		"禁止执行 TRUNCATE，可能清空数据表所有数据", "TRUNCATE is forbidden; it can wipe all data in a table"},
+	{"[内置] MongoDB drop / dropDatabase", "[Built-in] MongoDB drop / dropDatabase",
+		"禁止执行 MongoDB drop 操作", "MongoDB drop operations are forbidden"},
+	{"[内置] Redis FLUSHALL / FLUSHDB", "[Built-in] Redis FLUSHALL / FLUSHDB",
+		"禁止执行 Redis FLUSHALL / FLUSHDB，可能清空全部缓存数据", "Redis FLUSHALL / FLUSHDB is forbidden; it can wipe all cached data"},
+	{"[内置] curl / wget 发送 DELETE 请求", "[Built-in] curl / wget HTTP DELETE request",
+		"禁止通过 curl/wget 发送 HTTP DELETE 请求，可能删除目标系统数据", "Sending HTTP DELETE requests via curl/wget is forbidden; it can delete data on the target system"},
+	{"[内置] Python HTTP 客户端 DELETE（requests/httpx/aiohttp）", "[Built-in] Python HTTP client DELETE (requests/httpx/aiohttp)",
+		"禁止使用 Python HTTP 客户端发送 DELETE 请求", "Sending DELETE requests with a Python HTTP client is forbidden"},
+	{"[内置] 脚本中声明 HTTP DELETE 方法（JS/通用）", "[Built-in] HTTP DELETE method in scripts (JS/generic)",
+		"禁止在脚本中声明并发送 HTTP DELETE 请求", "Declaring and sending HTTP DELETE requests in scripts is forbidden"},
+	{"[内置] 批量清空 / 清除接口路径", "[Built-in] Bulk clear / purge endpoint paths",
+		"禁止调用批量清空或销毁类接口（/clear /wipe /flush /purge 等）", "Calling bulk clear or destroy endpoints (/clear /wipe /flush /purge etc.) is forbidden"},
+	{"[内置] 破坏性系统命令", "[Built-in] Destructive system commands",
+		"破坏性命令被拒绝（rm -rf / / mkfs / dd / fork bomb / 关机重启 / 覆写磁盘设备）", "Destructive command denied (rm -rf / / mkfs / dd / fork bomb / shutdown or reboot / overwriting disk devices)"},
+	{"[内置] 数据外泄管道", "[Built-in] Data exfiltration pipe",
+		"疑似数据外泄管道被拒绝（命令输出经 curl/wget/nc 外传）", "Suspected data exfiltration pipe denied (command output sent out via curl/wget/nc)"},
+	{"[内置] 删除类接口路径", "[Built-in] Delete-style endpoint paths",
+		"禁止调用删除类接口（/delete /remove /unlink /erase 等），不论使用哪种 HTTP 方法——多数应用的删除接口用 GET/POST 就能触发，同样会真实删除目标数据", "Calling delete-style endpoints (/delete /remove /unlink /erase etc.) is forbidden regardless of HTTP method; most apps expose deletion via GET/POST, which still really deletes target data"},
+}
+
+// legacyAssetInterceptNoteI18n maps the old Chinese asset-blocklist notes to English.
+var legacyAssetInterceptNoteI18n = [][2]string{
+	{"[内置] 政府网站 (.gov)", "[Built-in] Government sites (.gov)"},
+	{"[内置] 政府网站 (.gov.cn)", "[Built-in] Government sites (.gov.cn)"},
+	{"[内置] 教育网站 (.edu)", "[Built-in] Education sites (.edu)"},
+	{"[内置] 教育网站 (.edu.cn)", "[Built-in] Education sites (.edu.cn)"},
+}
+
+// migrateInterceptRulesI18n is a one-time migration that rewrites the seeded
+// Chinese name+message of built-in intercept rules (and asset blocklist notes) to
+// English. A row is touched only while its stored name AND message still equal the
+// original seeded values, so user-edited rows are never overwritten. Own settings
+// flag so it also runs on DBs that completed the v1..v3 seeds long ago. Runs after
+// the seeds, so fresh DBs (already English) are a no-op.
+func (d *DB) migrateInterceptRulesI18n() error {
+	if v, _, _ := d.GetSetting("intercept_default_rules_i18n_v1"); v == "done" {
+		return nil
+	}
+	for _, r := range legacyInterceptRuleI18n {
+		// Skip if an English-named row already exists (name is unique-ish; avoid dup).
+		if _, err := d.Exec(`
+UPDATE intercept_rules SET name=$2, message=$4
+WHERE name=$1 AND message=$3
+  AND NOT EXISTS (SELECT 1 FROM intercept_rules WHERE name=$2)`,
+			r.oldName, r.newName, r.oldMsg, r.newMsg); err != nil {
+			return fmt.Errorf("i18n rule %q: %w", r.oldName, err)
+		}
+	}
+	for _, r := range legacyAssetInterceptNoteI18n {
+		if _, err := d.Exec(`UPDATE asset_intercept_rules SET note=$2 WHERE note=$1 AND builtin`, r[0], r[1]); err != nil {
+			return fmt.Errorf("i18n asset rule %q: %w", r[0], err)
+		}
+	}
+	return d.SetSetting("intercept_default_rules_i18n_v1", "done")
 }
