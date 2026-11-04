@@ -213,7 +213,7 @@ func TestChatMentionBoundedJSON(t *testing.T) {
 		items[i] = long
 	}
 	v := boundChatMentionValue(map[string]any{"report": long, "scope": items}).(map[string]any)
-	if !strings.Contains(v["report"].(string), "已截断") || len(v["scope"].([]any)) != 101 {
+	if !strings.Contains(v["report"].(string), "truncated") || len(v["scope"].([]any)) != 101 {
 		t.Fatal("missing truncation markers")
 	}
 	encoded, err := json.Marshal(v)

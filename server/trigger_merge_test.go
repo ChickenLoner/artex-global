@@ -73,7 +73,7 @@ func TestFinalTriggerMessageSingleFirePrependsHeaderOnce(t *testing.T) {
 	if got := strings.Count(msg, longGoal); got != 1 {
 		t.Fatalf("single fire should carry the task goal exactly once, got %d", got)
 	}
-	if !strings.HasPrefix(msg, "【任务 #72") {
+	if !strings.HasPrefix(msg, "[Task #72") {
 		t.Fatalf("single fire should be prefixed with the task-context header: %q", msg)
 	}
 }

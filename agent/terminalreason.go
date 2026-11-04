@@ -61,7 +61,7 @@ func terminalText(ctx context.Context, term *harness.Terminal, tr *runTrace) (st
 		if !ok {
 			short = "cancel reason unavailable"
 		}
-		stage := "during execution"
+		stage := "an unknown stage"
 		switch reason {
 		case harness.ReasonAbortedStreaming:
 			stage = "the model output stage"
