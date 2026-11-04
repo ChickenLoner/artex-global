@@ -44,3 +44,59 @@ func TestDeleteEndpointPathPattern(t *testing.T) {
 		}
 	}
 }
+
+// The i18n migration must rewrite seeded Chinese rows to English only while the
+// stored name+message still equal the original seeded values.
+func TestMigrateInterceptRulesI18n(t *testing.T) {
+	d, err := Open(testDSN(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	exact, edited := legacyInterceptRuleI18n[2], legacyInterceptRuleI18n[3]
+	clean := func() {
+		for _, e := range []struct{ oldName, newName, oldMsg, newMsg string }{exact, edited} {
+			_, _ = d.Exec(`DELETE FROM intercept_rules WHERE name IN ($1,$2)`, e.oldName, e.newName)
+		}
+	}
+	clean()
+	t.Cleanup(clean)
+	for _, e := range []struct{ oldName, newName, oldMsg, newMsg string }{exact, edited} {
+		msg := e.oldMsg
+		if e.oldName == edited.oldName {
+			msg = "user edited message"
+		}
+		if _, err := d.Exec(`INSERT INTO intercept_rules(name, enabled, priority, match_target, match_type, pattern, action, message, timeout_enabled, timeout_seconds, timeout_action)
+VALUES ($1, true, 100, 'tool_input', 'regex', 'x', 'deny', $2, false, 60, 'deny')`, e.oldName, msg); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := d.SetSetting("intercept_default_rules_i18n_v1", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.migrateInterceptRulesI18n(); err != nil {
+		t.Fatal(err)
+	}
+	count := func(name, msg string) int {
+		var n int
+		if err := d.QueryRow(`SELECT count(*) FROM intercept_rules WHERE name=$1 AND message=$2`, name, msg).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if count(exact.newName, exact.newMsg) != 1 || count(exact.oldName, exact.oldMsg) != 0 {
+		t.Errorf("seeded row was not migrated to English")
+	}
+	if count(edited.oldName, "user edited message") != 1 || count(edited.newName, edited.newMsg) != 0 {
+		t.Errorf("user-edited row must be left untouched")
+	}
+}
+
+func TestLegacyInterceptRuleI18nIsEnglish(t *testing.T) {
+	han := regexp.MustCompile(`\p{Han}`)
+	for _, e := range legacyInterceptRuleI18n {
+		if han.MatchString(e.newName) || han.MatchString(e.newMsg) {
+			t.Errorf("replacement for %q still contains Chinese", e.oldName)
+		}
+	}
+}

@@ -3,7 +3,7 @@
 // Every tool call passes through the PreToolUse hook before executing.
 // (The RoE authorization-scope mechanism was removed; a replacement may be added
 // later.) Destructive/exfil gating is no longer hard-coded here — it lives in the
-// DB intercept rules (seeded as ordinary [内置] rules, so users can disable or
+// DB intercept rules (seeded as ordinary [Built-in] rules, so users can disable or
 // delete them), evaluated via applyIntercept.
 package guard
 
@@ -108,34 +108,35 @@ func (g *Guard) applyIntercept(ctx context.Context, ev hook.Event) hook.Result {
 		g.interceptor.Log(ctx, intercept.ConvIDFromContext(ctx), dec, ev.ToolName, ev.Input, "allowed")
 		return hook.Result{}
 	case "ask":
-		// F14 두뇌 보존 판단: 아래 두 차단 사유와 systemBlockMessage 프레이밍은 번역하지
-		// 않고 중국어 원문을 유지한다. 이 문자열은 g.block → hook.Result.Message 로 에이전트
-		// 에게 돌아가는 tool_result(펜테스트 에이전트가 차단을 표적 방어로 오인해 우회를
-		// 시도하지 않도록 유도하는 의도적 조종 문구, BRIEF 段[A] 성능 보존 대상)이다. 더구나
-		// ask 차단 경로는 deny 경로와 달리 Interceptor.Log 를 타지 않아, g.block → g.record 가
-		// 같은 프레이밍 전문을 감사 로그(GET /api/audit → entries[].reason)에도 그대로 싣는다.
-		// 즉 하나의 문자열이 에이전트 입력과 표시를 겸한다(F16 동형). 표시만 한국어로 떼어내려면
-		// g.block 이 두 문자열을 나르도록 구조를 바꿔야 하는데 고위험·저가치라 보류한다.
-		//
+		// The block reasons below and the systemBlockMessage framing flow back to the
+		// agent as the tool_result and, on this ask path, also into the audit record
+		// (g.block -> g.record), so one string serves both model input and display.
 		// If the worker context is already cancelled (task stopped / killed), block
 		// immediately without creating a pending record — avoids orphaned DB entries
 		// and makes execOne complete fast, reducing the race against drainSynthetic.
 		if ctx.Err() != nil {
-			return g.block(ev.ToolName, systemBlockMessage("工作已取消，平台安全管控阻止执行"), "")
+			return g.block(ev.ToolName, systemBlockMessage("task cancelled; platform safety control blocked execution"), "")
 		}
 		convID := intercept.ConvIDFromContext(ctx)
 		if !g.interceptor.HandleAsk(ctx, convID, dec, ev.ToolName, ev.Input) {
-			return g.block(ev.ToolName, systemBlockMessage("人工审批未通过（用户拒绝或审批超时）"), "")
+			return g.block(ev.ToolName, systemBlockMessage("manual approval not granted (user denied or approval timed out)"), "")
 		}
 		return hook.Result{}
 	}
 	return hook.Result{}
 }
 
+// BlockMarker is the fixed ASCII prefix of every platform block message. Older
+// ARTEX versions emitted the Chinese marker LegacyBlockMarker; detections match both.
+const (
+	BlockMarker       = "[ARTEX PLATFORM CONTROL - NOT TARGET DEFENSE]"
+	LegacyBlockMarker = "【ARTEX 平台管控·非目标防御】"
+)
+
 // systemBlockMessage frames an intercept block as an ARTEX platform-governance
 // decision so the agent does not mistake it for a target-side defense.
 //
-// The bare reasons ("禁止执行此工具" / "用户拒绝") read exactly like a WAF/403 on
+// The bare reasons ("this tool is forbidden" / "user denied") read exactly like a WAF/403 on
 // the target, so a pentest agent's instinct is to bypass them — rewrite the
 // command, swap the payload, re-encode, retry. That is both futile (the platform
 // blocks the class of action, not one string) and wrong (it's a policy decision,
@@ -145,8 +146,8 @@ func (g *Guard) applyIntercept(ctx context.Context, ev hook.Event) hook.Result {
 // Audit/history rows keep the raw reason (see Interceptor.Log); only the
 // model-facing tool_result carries this framing.
 func systemBlockMessage(reason string) string {
-	return "【ARTEX 平台管控·非目标防御】此调用被平台拦截。" +
-		"原因：" + reason + "。此操作被禁止。"
+	return BlockMarker + " This call was blocked by the platform. " +
+		"Reason: " + reason + ". This operation is forbidden."
 }
 
 var reBlocked = regexp.MustCompile(`(?i)\b(403|forbidden|waf|blocked|rate.?limit|429|captcha|denied)\b`)

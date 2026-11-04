@@ -141,7 +141,7 @@ var logCatalog = map[string]map[string]string{
 	"[mcp] %s 에서 도구 %d개를 발견해 캐시했습니다": {
 		"en": "[mcp] from %s, discovered and cached %d tool(s)",
 		"zh": "[mcp] 从 %s 发现并缓存了 %d 个工具",
-		"es": "[mcp] desde %s, se descubrieron y almacenaron en caché %d herramienta(s)", "ja": "[mcp] %s からツールを %d 件検出し、キャッシュしました", "th": "[mcp] ค้นพบเครื่องมือ %d รายการจาก %s และแคชไว้แล้ว",
+		"es": "[mcp] desde %s, se descubrieron y almacenaron en caché %d herramienta(s)", "ja": "[mcp] %s からツールを %d 件検出し、キャッシュしました", "th": "[mcp] จาก %s ค้นพบและแคชเครื่องมือแล้ว %d รายการ",
 	},
 	"[mcp] 시작 시 자동 발견: 목록을 읽지 못했습니다: %v": {
 		"en": "[mcp] auto-discovery at startup: failed to read the list: %v",
