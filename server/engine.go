@@ -501,7 +501,7 @@ func transitionIntentState(store *db.ExplorationStore, intentID int64, expected,
 		// 이 CAS 충돌 오류는 runIntent(아래 989~1156) 안에서만 쓰이고 그 함수는 bool 을
 		// 반환한다. 오류는 log.Printf 로 남기거나 흐름 제어에만 쓰여 HTTP 응답·에이전트
 		// 도구(actool)로 나가지 않으므로, 로그 성격(Z2)이라 원문을 보존한다.
-		return fmt.Errorf("%w: 意图 %d 不再是 %s 状态", db.ErrIntentStateConflict, intentID, expected)
+		return fmt.Errorf("%w: intent %d is no longer in state %s", db.ErrIntentStateConflict, intentID, expected)
 	}
 	return nil
 }

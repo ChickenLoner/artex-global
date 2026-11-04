@@ -339,7 +339,7 @@ func ValidateProxyURL(raw string) (*url.URL, error) {
 	switch u.Scheme {
 	case "http", "https", "socks5":
 	case "":
-		return nil, fmt.Errorf("代理 %q 缺少协议(用 http://、https:// 或 socks5://)", raw)
+		return nil, fmt.Errorf("proxy %q is missing a scheme (use http://, https:// or socks5://)", raw)
 	default:
 		return nil, fmt.Errorf("unsupported proxy scheme %q (use http, https or socks5)", u.Scheme)
 	}
@@ -1054,7 +1054,7 @@ func (t *Traffic) DeleteHost(host string) (int64, error) {
 		return 0, errors.Join(err, restoreTrees(stageDir, moves))
 	}
 	if err := tx.Commit(); err != nil {
-		return 0, errors.Join(fmt.Errorf("提交流量索引删除: %w", err), restoreTrees(stageDir, moves))
+		return 0, errors.Join(fmt.Errorf("commit traffic index deletion: %w", err), restoreTrees(stageDir, moves))
 	}
 	t.reapStage(stageDir)
 	if n > 0 {
@@ -1103,7 +1103,7 @@ func (t *Traffic) DeleteAll() (deleted int64, reclaimed int64, err error) {
 		return 0, 0, errors.Join(err, restoreTrees(stageDir, moves))
 	}
 	if err := tx.Commit(); err != nil {
-		return 0, 0, errors.Join(fmt.Errorf("提交流量索引删除: %w", err), restoreTrees(stageDir, moves))
+		return 0, 0, errors.Join(fmt.Errorf("commit traffic index deletion: %w", err), restoreTrees(stageDir, moves))
 	}
 	t.reapStage(stageDir)
 	if err := t.gcBlobs(); err != nil {
@@ -1154,14 +1154,14 @@ func (t *Traffic) compactIndex() error {
 		// A full merge, not the bounded one reclaim uses: with the index emptied
 		// there is nothing left to merge, so this only discards the tombstones.
 		if _, err := conn.ExecContext(ctx, `INSERT INTO ex_fts(ex_fts) VALUES('optimize')`); err != nil {
-			return fmt.Errorf("合并全文索引: %w", err)
+			return fmt.Errorf("merge full-text index: %w", err)
 		}
 	}
 	if _, err := conn.ExecContext(ctx, `PRAGMA auto_vacuum=incremental`); err != nil {
 		return err
 	}
 	if _, err := conn.ExecContext(ctx, `VACUUM`); err != nil {
-		return fmt.Errorf("压实索引: %w", err)
+		return fmt.Errorf("compact index: %w", err)
 	}
 	var mode int
 	if err := conn.QueryRowContext(ctx, `PRAGMA auto_vacuum`).Scan(&mode); err != nil {
@@ -1171,7 +1171,7 @@ func (t *Traffic) compactIndex() error {
 	// space on their own instead of waiting for another purge.
 	t.incrementalVacuum = mode == autoVacuumIncremental
 	if _, err := conn.ExecContext(ctx, `PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
-		return fmt.Errorf("截断 WAL: %w", err)
+		return fmt.Errorf("truncate WAL: %w", err)
 	}
 	return nil
 }
@@ -1183,18 +1183,18 @@ func (t *Traffic) deleteWhere(tx *sql.Tx, where string, args ...any) (int64, err
 	if t.fts {
 		// ex_fts is contentless and addressed by rowid, hence the rowid sub-select.
 		if _, err := tx.Exec(`DELETE FROM ex_fts WHERE rowid IN (SELECT rowid FROM exchanges WHERE `+where+`)`, args...); err != nil {
-			return 0, fmt.Errorf("删除全文索引: %w", err)
+			return 0, fmt.Errorf("delete full-text index: %w", err)
 		}
 	}
 	if _, err := tx.Exec(`DELETE FROM exchange_bodies WHERE id IN (SELECT id FROM exchanges WHERE `+where+`)`, args...); err != nil {
-		return 0, fmt.Errorf("删除正文: %w", err)
+		return 0, fmt.Errorf("delete bodies: %w", err)
 	}
 	if _, err := tx.Exec(`DELETE FROM blob_refs WHERE exchange_id IN (SELECT id FROM exchanges WHERE `+where+`)`, args...); err != nil {
-		return 0, fmt.Errorf("删除 blob 引用: %w", err)
+		return 0, fmt.Errorf("delete blob references: %w", err)
 	}
 	res, err := tx.Exec(`DELETE FROM exchanges WHERE `+where, args...)
 	if err != nil {
-		return 0, fmt.Errorf("删除索引行: %w", err)
+		return 0, fmt.Errorf("delete index rows: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n, nil
@@ -1265,7 +1265,7 @@ func (t *Traffic) stageTreesForArchive(dirs, hosts []string, archiveID, taskID i
 			if os.IsNotExist(err) {
 				continue
 			}
-			return stageDir, moves, fmt.Errorf("检查历史流量目录 %s: %w", source, err)
+			return stageDir, moves, fmt.Errorf("check historical traffic directory %s: %w", source, err)
 		}
 		planned = append(planned, stagedTrafficPath{source: source})
 	}
@@ -1279,10 +1279,10 @@ func (t *Traffic) stageTreesForArchive(dirs, hosts []string, archiveID, taskID i
 	}
 	parent := filepath.Join(t.dir, "_delete_staging")
 	if err := os.MkdirAll(parent, 0o700); err != nil {
-		return "", nil, fmt.Errorf("创建流量暂存目录: %w", err)
+		return "", nil, fmt.Errorf("create traffic staging directory: %w", err)
 	}
 	if stageDir, err = os.MkdirTemp(parent, "hosts-"); err != nil {
-		return "", nil, fmt.Errorf("创建流量暂存目录: %w", err)
+		return "", nil, fmt.Errorf("create traffic staging directory: %w", err)
 	}
 	journal := hostDeleteStageJournal{Version: 1, ArchiveID: archiveID, TaskID: taskID, Hosts: uniqueHosts}
 	for i := range planned {
@@ -1296,7 +1296,7 @@ func (t *Traffic) stageTreesForArchive(dirs, hosts []string, archiveID, taskID i
 	for _, move := range planned {
 		source, staged := move.source, move.staged
 		if err := os.Rename(source, staged); err != nil {
-			return stageDir, moves, fmt.Errorf("移出历史流量目录 %s: %w", source, err)
+			return stageDir, moves, fmt.Errorf("move out historical traffic directory %s: %w", source, err)
 		}
 		moves = append(moves, stagedTrafficPath{source: source, staged: staged})
 	}
@@ -1426,7 +1426,7 @@ func (t *Traffic) stageDeleteHostsExact(hosts []string, archiveID, taskID int64)
 	stage := &HostDeleteStage{traffic: t}
 	fail := func(cause error) (*HostDeleteStage, error) {
 		if rollbackErr := stage.rollbackLocked(); rollbackErr != nil {
-			return nil, errors.Join(cause, fmt.Errorf("回滚流量删除: %w", rollbackErr))
+			return nil, errors.Join(cause, fmt.Errorf("roll back traffic deletion: %w", rollbackErr))
 		}
 		return nil, cause
 	}
@@ -1510,17 +1510,17 @@ func (t *Traffic) RecoverHostDeleteStages(archiveCommitted func(int64, int64) (b
 		}
 		var journal hostDeleteStageJournal
 		if err := json.Unmarshal(raw, &journal); err != nil {
-			errs = append(errs, fmt.Errorf("读取流量暂存日志 %s: %w", stageDir, err))
+			errs = append(errs, fmt.Errorf("read traffic staging journal %s: %w", stageDir, err))
 			continue
 		}
 		if journal.Version != 1 {
-			errs = append(errs, fmt.Errorf("流量暂存日志 %s 的版本 %d 不受支持", stageDir, journal.Version))
+			errs = append(errs, fmt.Errorf("traffic staging journal %s has unsupported version %d", stageDir, journal.Version))
 			continue
 		}
 		moves := make([]stagedTrafficPath, 0, len(journal.Moves))
 		for _, move := range journal.Moves {
 			if !pathWithin(t.dir, move.Source) || !pathWithin(stageDir, move.Staged) {
-				errs = append(errs, fmt.Errorf("流量暂存日志包含越界路径: %s", stageDir))
+				errs = append(errs, fmt.Errorf("traffic staging journal contains an out-of-bounds path: %s", stageDir))
 				moves = nil
 				break
 			}
@@ -1538,7 +1538,7 @@ func (t *Traffic) RecoverHostDeleteStages(archiveCommitted func(int64, int64) (b
 		committed := false
 		if journal.ArchiveID > 0 {
 			if archiveCommitted == nil {
-				errs = append(errs, fmt.Errorf("流量归档 %d 无状态解析器", journal.ArchiveID))
+				errs = append(errs, fmt.Errorf("traffic archive %d has no state resolver", journal.ArchiveID))
 				continue
 			}
 			committed, err = archiveCommitted(journal.ArchiveID, journal.TaskID)
@@ -1633,7 +1633,7 @@ func (s *HostDeleteStage) rollbackLocked() error {
 	var errs []error
 	if s.tx != nil {
 		if err := s.tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
-			errs = append(errs, fmt.Errorf("回滚流量索引: %w", err))
+			errs = append(errs, fmt.Errorf("roll back traffic index: %w", err))
 		}
 	}
 	if err := restoreTrees(s.stageDir, s.moves); err != nil {
@@ -1656,7 +1656,7 @@ func (s *HostDeleteStage) Commit() error {
 		restoreErr := restoreTrees(s.stageDir, s.moves)
 		s.done = true
 		s.traffic.wmu.Unlock()
-		return errors.Join(fmt.Errorf("提交流量索引删除: %w", err), restoreErr)
+		return errors.Join(fmt.Errorf("commit traffic index deletion: %w", err), restoreErr)
 	}
 	// Unlinking the staged trees is what used to hold the write lock for hours;
 	// it now runs in the background, while collection below only needs them to be
@@ -1665,7 +1665,7 @@ func (s *HostDeleteStage) Commit() error {
 	s.traffic.reclaim()
 	var errs []error
 	if err := s.traffic.gcBlobs(); err != nil {
-		errs = append(errs, fmt.Errorf("回收流量 blob: %w", err))
+		errs = append(errs, fmt.Errorf("reclaim traffic blobs: %w", err))
 	}
 	s.done = true
 	s.traffic.wmu.Unlock()
@@ -1762,7 +1762,7 @@ func (t *Traffic) reclaimChunk(ctx context.Context, conn *sql.Conn, merges *int)
 	if t.fts && *merges > 0 {
 		// A negative rank is fts5's page budget for one incremental merge.
 		if _, err := conn.ExecContext(ctx, `INSERT INTO ex_fts(ex_fts, rank) VALUES('merge', ?)`, -reclaimMergePages); err != nil {
-			return false, fmt.Errorf("合并全文索引: %w", err)
+			return false, fmt.Errorf("merge full-text index: %w", err)
 		}
 		*merges--
 		progressed = true
@@ -1782,7 +1782,7 @@ func (t *Traffic) reclaimChunk(ctx context.Context, conn *sql.Conn, merges *int)
 	}
 	// The budget is a constant and PRAGMA arguments cannot be bound as parameters.
 	if _, err := conn.ExecContext(ctx, fmt.Sprintf(`PRAGMA incremental_vacuum(%d)`, reclaimChunkPages)); err != nil {
-		return false, fmt.Errorf("回收索引空闲页: %w", err)
+		return false, fmt.Errorf("reclaim free index pages: %w", err)
 	}
 	if err := conn.QueryRowContext(ctx, `PRAGMA freelist_count`).Scan(&after); err != nil {
 		return false, err
