@@ -49,7 +49,54 @@ func (s *Server) wsResolve(rel string) (string, bool) {
 	if abs != base && !strings.HasPrefix(abs, base+string(os.PathSeparator)) {
 		return "", false
 	}
+	if !s.wsInsideRoot(abs) {
+		return "", false
+	}
 	return abs, true
+}
+
+// wsResolveLeaf is wsResolve for operations that act on the directory entry itself
+// (delete): the final component may be a symlink (removing it only removes the
+// link), but every parent directory must still resolve inside the root.
+func (s *Server) wsResolveLeaf(rel string) (string, bool) {
+	base := filepath.Clean(s.m.dir)
+	rel = strings.TrimPrefix(strings.TrimSpace(rel), "/")
+	abs := filepath.Clean(filepath.Join(base, filepath.Clean("/"+rel)))
+	if abs != base && !strings.HasPrefix(abs, base+string(os.PathSeparator)) {
+		return "", false
+	}
+	if abs == base {
+		return abs, true
+	}
+	if !s.wsInsideRoot(filepath.Dir(abs)) {
+		return "", false
+	}
+	return abs, true
+}
+
+// wsInsideRoot reports whether abs, with every symlink resolved, stays inside the
+// work dir. The lexical Clean in wsResolve cannot see symlinks: a link planted in
+// the workspace (the agent's shell can create one) would otherwise let the file API
+// read, overwrite or delete anything the server can reach. Paths that do not exist
+// yet are checked through their deepest existing ancestor; a dangling symlink is
+// rejected because creating the file would write through it.
+func (s *Server) wsInsideRoot(abs string) bool {
+	root, err := filepath.EvalSymlinks(filepath.Clean(s.m.dir))
+	if err != nil {
+		return false
+	}
+	for p := abs; ; p = filepath.Dir(p) {
+		if _, err := os.Lstat(p); err == nil {
+			real, err := filepath.EvalSymlinks(p)
+			if err != nil {
+				return false // dangling or unreadable link
+			}
+			return real == root || strings.HasPrefix(real, root+string(os.PathSeparator))
+		}
+		if p == filepath.Dir(p) {
+			return false
+		}
+	}
 }
 
 // wsRel renders an absolute path back as a workspace-relative path (forward slashes).
@@ -202,7 +249,7 @@ func (s *Server) wsMkdir(w http.ResponseWriter, r *http.Request) {
 // DELETE /api/workspace/delete?path=<rel> — removes a file or a directory tree
 // (confined to the work dir; the root itself can't be deleted).
 func (s *Server) wsDelete(w http.ResponseWriter, r *http.Request) {
-	abs, ok := s.wsResolve(r.URL.Query().Get("path"))
+	abs, ok := s.wsResolveLeaf(r.URL.Query().Get("path"))
 	if !ok {
 		writeErr(w, 400, errWsIllegalPath)
 		return

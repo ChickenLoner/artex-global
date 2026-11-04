@@ -10,12 +10,16 @@ import (
 	"time"
 )
 
-// Repo 是发布源。写死而不是做成配置项：更新源可配等于给任何能改配置的人一条
-// 远程代码执行通道，对一个渗透测试平台来说这个口子开不得。
-const Repo = "Autumn-27/artex"
+// Repo is the release source. It is fixed at build time (-ldflags
+// "-X github.com/Autumn-27/artex/selfupdate.Repo=owner/name") and is NOT a runtime
+// setting: a configurable update source would hand remote code execution to anyone
+// who can change the config. It defaults to this edition's repository, never to the
+// upstream project (which is unreachable and cannot be trusted to publish binaries
+// for this fork).
+var Repo = "chickenloner/artex-global"
 
-// latestURL 是 GitHub 的"最新正式版"接口。它会自动跳过 prerelease 和 draft。
-const latestURL = "https://api.github.com/repos/" + Repo + "/releases/latest"
+// latestURL is GitHub's "latest stable release" endpoint (skips prerelease/draft).
+func latestURL() string { return "https://api.github.com/repos/" + Repo + "/releases/latest" }
 
 // allowedHosts 限定升级链路能访问的域名。配合下面的 checkRedirect，
 // 任何一跳被重定向到名单外的主机都会直接失败——这是防止 DNS 污染 / 中间人
@@ -86,7 +90,7 @@ func checkURL(u *url.URL) error {
 
 // FetchLatest 查询最新正式版。
 func FetchLatest(ctx context.Context, c *http.Client) (*Release, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, latestURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, latestURL(), nil)
 	if err != nil {
 		return nil, err
 	}
