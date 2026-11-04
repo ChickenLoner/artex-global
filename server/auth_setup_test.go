@@ -222,3 +222,33 @@ func TestClientKeyIgnoresForwardedFor(t *testing.T) {
 		t.Fatalf("로그 식별자에는 두 값이 모두 있어야 합니다: %q", id)
 	}
 }
+
+func TestClientKeyTrustedProxy(t *testing.T) {
+	mk := func(remote, xff string) *http.Request {
+		r := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+		r.RemoteAddr = remote
+		if xff != "" {
+			r.Header.Set("X-Forwarded-For", xff)
+		}
+		return r
+	}
+	// default: XFF ignored
+	t.Setenv(trustedProxiesEnv, "")
+	if got := clientKey(mk("10.0.0.2:1234", "1.2.3.4")); got != "10.0.0.2" {
+		t.Fatalf("untrusted default: got %s", got)
+	}
+	t.Setenv(trustedProxiesEnv, "10.0.0.2, 10.1.0.0/16")
+	if got := clientKey(mk("10.0.0.2:1234", "9.9.9.9, 1.2.3.4")); got != "1.2.3.4" {
+		t.Fatalf("trusted proxy should use rightmost untrusted hop: got %s", got)
+	}
+	if got := clientKey(mk("10.0.0.2:1234", "1.2.3.4, 10.1.2.3")); got != "1.2.3.4" {
+		t.Fatalf("trusted chain hop skipped: got %s", got)
+	}
+	if got := clientKey(mk("10.0.0.2:1234", "garbage")); got != "10.0.0.2" {
+		t.Fatalf("malformed XFF: got %s", got)
+	}
+	// peer not trusted → forged XFF ignored
+	if got := clientKey(mk("203.0.113.5:1", "1.2.3.4")); got != "203.0.113.5" {
+		t.Fatalf("untrusted peer: got %s", got)
+	}
+}

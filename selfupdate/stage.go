@@ -3,7 +3,9 @@ package selfupdate
 import (
 	"archive/zip"
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -17,6 +19,37 @@ import (
 
 // sumsAsset 是 release.yml 生成的校验和清单，覆盖 Release 里全部 zip。
 const sumsAsset = "SHA256SUMS"
+
+// sigAsset is the detached Ed25519 signature (base64 or hex) over the exact bytes
+// of SHA256SUMS. A checksum file fetched from the same place as the binary only
+// proves the download was not corrupted; the signature proves the maintainers
+// published it.
+const sigAsset = "SHA256SUMS.sig"
+
+// UpdatePublicKey is the hex-encoded Ed25519 public key that release signatures
+// must verify against. It is injected at build time
+// (-X github.com/Autumn-27/artex/selfupdate.UpdatePublicKey=<64 hex chars>). When
+// empty (the default for unofficial builds) one-click update is refused.
+var UpdatePublicKey = ""
+
+// verifySums checks sig against raw using UpdatePublicKey.
+func verifySums(raw, sig []byte) error {
+	key, err := hex.DecodeString(strings.TrimSpace(UpdatePublicKey))
+	if err != nil || len(key) != ed25519.PublicKeySize {
+		return fmt.Errorf("이 빌드에는 업데이트 서명 공개키가 내장되어 있지 않아 자동 업데이트를 거부합니다(수동으로 업데이트하세요)")
+	}
+	text := strings.TrimSpace(string(sig))
+	var sigBytes []byte
+	if b, err := hex.DecodeString(text); err == nil {
+		sigBytes = b
+	} else if b, err := base64.StdEncoding.DecodeString(text); err == nil {
+		sigBytes = b
+	}
+	if len(sigBytes) != ed25519.SignatureSize || !ed25519.Verify(ed25519.PublicKey(key), raw, sigBytes) {
+		return fmt.Errorf("%s 서명 검증에 실패했습니다: 릴리스가 변조되었거나 신뢰할 수 없는 발행자입니다", sumsAsset)
+	}
+	return nil
+}
 
 // maxBinarySize 限制解压出来的二进制体积，防止畸形 zip 把磁盘写满。
 const maxBinarySize = 512 << 20 // 512 MiB
@@ -142,6 +175,22 @@ func fetchSums(ctx context.Context, c *http.Client, rel *Release) (map[string]st
 	raw, err := io.ReadAll(io.LimitReader(body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("%s 읽기 실패: %w", sumsAsset, err)
+	}
+	sigA, ok := rel.FindAsset(sigAsset)
+	if !ok {
+		return nil, fmt.Errorf("이 릴리스에 %s 서명이 없어 업데이트를 거부합니다", sigA.Name)
+	}
+	sigBody, err := get(ctx, c, sigA.URL)
+	if err != nil {
+		return nil, fmt.Errorf("%s 내려받기 실패: %w", sigA.Name, err)
+	}
+	defer sigBody.Close()
+	sigRaw, err := io.ReadAll(io.LimitReader(sigBody, 4<<10))
+	if err != nil {
+		return nil, fmt.Errorf("%s 읽기 실패: %w", sigA.Name, err)
+	}
+	if err := verifySums(raw, sigRaw); err != nil {
+		return nil, err
 	}
 	out := parseSums(string(raw))
 	if len(out) == 0 {

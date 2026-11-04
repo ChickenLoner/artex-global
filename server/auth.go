@@ -399,9 +399,68 @@ func (l *authLimiter) reset(key string) {
 func clientKey(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
+	}
+	// Behind a reverse proxy every request arrives from the proxy's address, so one
+	// bad client would lock out everyone. When (and only when) the TCP peer is a
+	// configured trusted proxy, walk X-Forwarded-For from the right and use the first
+	// hop that is not itself a trusted proxy. Entries to the left of it are
+	// client-controlled and never used.
+	nets := trustedProxyNets()
+	if len(nets) == 0 || !ipInNets(host, nets) {
+		return host
+	}
+	parts := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
+	for i := len(parts) - 1; i >= 0; i-- {
+		hop := strings.TrimSpace(parts[i])
+		if net.ParseIP(hop) == nil {
+			return host // malformed header: fall back to the proxy itself
+		}
+		if !ipInNets(hop, nets) {
+			return hop
+		}
 	}
 	return host
+}
+
+// trustedProxiesEnv lists reverse-proxy IPs/CIDRs (comma separated) whose
+// X-Forwarded-For is honoured for rate limiting. Empty (default) trusts nobody.
+const trustedProxiesEnv = "ARTEX_TRUSTED_PROXIES"
+
+func trustedProxyNets() []*net.IPNet {
+	var out []*net.IPNet
+	for _, e := range strings.Split(os.Getenv(trustedProxiesEnv), ",") {
+		e = strings.TrimSpace(e)
+		if e == "" {
+			continue
+		}
+		if !strings.Contains(e, "/") {
+			if ip := net.ParseIP(e); ip != nil {
+				if ip.To4() != nil {
+					e += "/32"
+				} else {
+					e += "/128"
+				}
+			}
+		}
+		if _, n, err := net.ParseCIDR(e); err == nil {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+func ipInNets(host string, nets []*net.IPNet) bool {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	for _, n := range nets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func clientLogID(r *http.Request) string {

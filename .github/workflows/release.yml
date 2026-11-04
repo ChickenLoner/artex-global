@@ -53,6 +53,8 @@ jobs:
           ARTEX_TARGET_OS: ${{ matrix.goos }}
           ARTEX_TARGET_ARCH: ${{ matrix.goarch }}
           ARTEX_BUILD_VERSION: ${{ github.ref_name }}
+          # Ed25519 public key (64 hex chars) that one-click update verifies; empty = update disabled.
+          ARTEX_UPDATE_PUBKEY: ${{ vars.ARTEX_UPDATE_PUBKEY }}
           ARTEX_SKIP_FRONTEND: "1"
           ARTEX_SKIP_NPM_CI: "1"
           # UPX 자가 압축 해제 ELF 는 일부 Linux 커널·가상화·보안 정책에서 크래시가 난다.
@@ -89,11 +91,26 @@ jobs:
       - name: Generate checksums
         working-directory: dist
         run: sha256sum -- *.zip > SHA256SUMS
+      - name: Sign checksums
+        working-directory: dist
+        env:
+          # PEM-encoded Ed25519 private key (openssl genpkey -algorithm ed25519). Keep it secret;
+          # without it the release has no SHA256SUMS.sig and one-click update refuses it.
+          ARTEX_UPDATE_SIGNING_KEY: ${{ secrets.ARTEX_UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -n "$ARTEX_UPDATE_SIGNING_KEY" ]; then
+            printf '%s\n' "$ARTEX_UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/sign.pem"
+            openssl pkeyutl -sign -rawin -inkey "$RUNNER_TEMP/sign.pem" -in SHA256SUMS | od -An -vtx1 | tr -d ' \n' > SHA256SUMS.sig
+            rm -f "$RUNNER_TEMP/sign.pem"
+          else
+            echo "::warning::ARTEX_UPDATE_SIGNING_KEY not set; release will not be updatable from the UI"
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.zip
             dist/SHA256SUMS
+            dist/SHA256SUMS.sig
           generate_release_notes: true
 
   # ④ 다중 아키텍처 이미지 → GitHub Container Registry(ghcr.io) 에 push(binaries 가 빌드한 Linux 바이너리를
