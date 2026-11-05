@@ -2,10 +2,10 @@ package server
 
 import "testing"
 
-// triggers.go 의 트리거 설정 검증 오류 문구를 한국어로 유지하는 회귀 방어 테스트다.
-// 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를 재사용한다.
+// A regression-guard test that keeps the trigger config validation error text in triggers.go in Korean.
+// The Korean check reuses assertKoreanError created by F3a (contains Hangul, zero Chinese Han characters).
 
-// TestTriggerErrorConstantsLocalized 는 오류 상수 3종이 전부 한국어임을 단언한다.
+// TestTriggerErrorConstantsLocalized asserts that all 3 error constants are Korean.
 func TestTriggerErrorConstantsLocalized(t *testing.T) {
 	cases := []struct {
 		name string
@@ -20,9 +20,9 @@ func TestTriggerErrorConstantsLocalized(t *testing.T) {
 	}
 }
 
-// TestValidateTriggerLocalized 는 validateTrigger 순수 함수를 실제로 호출해, 조건 누락·도구
-// 미선택 경로가 한국어 상수를 돌려주고 유효 입력은 빈 문자열을 돌려줌을 확인한다. 이 반환값은
-// pgCreateTrigger·pgUpdateTrigger 가 writeErr(400, msg) 로 사용자에게 그대로 노출한다.
+// TestValidateTriggerLocalized actually calls the pure function validateTrigger and confirms that the missing-condition and no-tool-
+// selected paths return the Korean constants and that valid input returns an empty string. This return value is
+// exposed as-is to the user by pgCreateTrigger and pgUpdateTrigger via writeErr(400, msg).
 func TestValidateTriggerLocalized(t *testing.T) {
 	if msg := validateTrigger(&triggerReq{}); msg != errTriggerNoCondition {
 		t.Fatalf("조건 누락 문구 = %q, 기대 = %q", msg, errTriggerNoCondition)
