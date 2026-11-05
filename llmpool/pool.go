@@ -117,7 +117,7 @@ func (p *Pool) Stream(ctx context.Context, req llm.CompletionRequest) iter.Seq2[
 		if lastErr == nil {
 			lastErr = ErrExhausted
 		}
-		log.Printf("[llmpool] 轮询链已耗尽(%d 个配置全部失败)，最后错误：%s", len(order), trimErr(lastErr))
+		log.Printf("[llmpool] round-robin chain exhausted (all %d configs failed), last error: %s", len(order), trimErr(lastErr))
 		yield(llm.StreamEvent{}, fmt.Errorf("%w: %v", ErrExhausted, lastErr))
 	}
 }
@@ -156,7 +156,7 @@ func (p *Pool) Complete(ctx context.Context, req llm.CompletionRequest) (llm.Mes
 	if lastErr == nil {
 		lastErr = ErrExhausted
 	}
-	log.Printf("[llmpool] 轮询链已耗尽(%d 个配置全部失败)，最后错误：%s", len(order), trimErr(lastErr))
+	log.Printf("[llmpool] round-robin chain exhausted (all %d configs failed), last error: %s", len(order), trimErr(lastErr))
 	return llm.Message{}, "", llm.Usage{}, fmt.Errorf("%w: %v", ErrExhausted, lastErr)
 }
 

@@ -1782,7 +1782,7 @@ func (s *Server) seed(t *Task, text string) {
 	}
 	// P0-1 guard: never treat the configured LLM gateway as a target.
 	if gw := s.llmHost(); gw != "" && host == gw {
-		log.Printf("[seed] task %s: 目标 %q 是 LLM 网关，拒绝作为渗透目标", t.ID, host)
+		log.Printf("[seed] task %s: target %q is an LLM gateway, rejected as a penetration target", t.ID, host)
 		return
 	}
 
@@ -1826,7 +1826,7 @@ func (s *Server) seedFirstIntent(t *Task) {
 	summary := fmt.Sprintf("Complete the task goal: %s (task: %s)", t.Goal, t.Description)
 	id, err := t.Store.AddIntent(map[string]any{"summary": summary}, 8, nil, "seed")
 	if err != nil {
-		log.Printf("[seed] task %s: 下发种子意图失败: %v", t.ID, err)
+		log.Printf("[seed] task %s: failed to dispatch seed intent: %v", t.ID, err)
 		return
 	}
 	if origin, _ := t.Store.OriginFactID(); origin > 0 {

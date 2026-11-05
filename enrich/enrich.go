@@ -128,7 +128,7 @@ func (e *Engine) enqueue(j job) {
 	select {
 	case e.jobs <- j:
 	default: // queue full → drop (best-effort enrichment)
-		log.Printf("[enrich] queue full, dropping job kind=%d id=%d", j.kind, j.id)
+		log.Printf("[enrich] queue full, job dropped kind=%d id=%d", j.kind, j.id)
 	}
 }
 

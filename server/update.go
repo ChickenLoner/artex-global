@@ -312,7 +312,7 @@ func (s *Server) updateApply(w http.ResponseWriter, r *http.Request) {
 		})
 		updHub.finish(err)
 		if err != nil {
-			log.Printf("[update] 更新失败：%v", err)
+			log.Printf("[update] update failed: %v", err)
 			return
 		}
 		log.Printf("[update] %s → %s staged, exiting soon to complete the swap", current, rel.TagName)

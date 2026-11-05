@@ -77,14 +77,14 @@ func applyStaged(p Paths) (Action, State) {
 	m, _ := readMarker(p.Marker)
 
 	if err := verifyStaged(p); err != nil {
-		log.Printf("[update] 暂存的新版本未通过校验，已丢弃，继续运行当前版本：%v", err)
+		log.Printf("[update] staged new version failed validation and was dropped, continuing with the current version: %v", err)
 		cleanStaged(p)
 		_ = os.Remove(p.Marker)
 		return Continue, State{FailedStage: true, Detail: "새 버전 검증에 실패해 폐기했습니다: " + err.Error()}
 	}
 
 	if err := swap(p); err != nil {
-		log.Printf("[update] 换装失败，继续运行当前版本：%v", err)
+		log.Printf("[update] binary swap failed, continuing with the current version: %v", err)
 		cleanStaged(p)
 		_ = os.Remove(p.Marker)
 		return Continue, State{FailedStage: true, Detail: "버전 교체에 실패했습니다: " + err.Error()}
@@ -96,7 +96,7 @@ func applyStaged(p Paths) (Action, State) {
 		m.StagedAt = time.Now().Unix()
 	}
 	if err := writeMarker(p.Marker, m); err != nil {
-		log.Printf("[update] 写升级标记失败（失去自动回滚能力）：%v", err)
+		log.Printf("[update] failed to write upgrade marker (automatic rollback unavailable): %v", err)
 	}
 	log.Printf("[update] swapped in %s, exiting to restart (exit %d)", orUnknown(m.To), ExitRestart)
 	return Restart, State{Pending: true}
@@ -113,17 +113,17 @@ func confirmOrRollback(p Paths, m marker) (Action, State) {
 		if err := rollback(p); err != nil {
 			// If even the rollback failed, do not restart again, or it would fall into an endless restart loop. Clear the marker
 			// and let the process start in its current state — if it cannot start, the user can at least see the reason in the log.
-			log.Printf("[update] 新版本连续 %d 次启动失败，且回滚失败：%v", maxAttempts, err)
+			log.Printf("[update] new version failed to start %d times in a row, and rollback failed: %v", maxAttempts, err)
 			_ = os.Remove(p.Marker)
 			return Continue, State{Detail: "새 버전 시작에 실패하고 롤백도 실패했습니다: " + err.Error()}
 		}
-		log.Printf("[update] 新版本连续 %d 次启动失败，已回滚到 %s，退出以重启（exit %d）",
+		log.Printf("[update] new version failed to start %d times in a row, rolled back to %s, exiting to restart (exit %d)",
 			maxAttempts, orUnknown(m.From), ExitRestart)
 		_ = os.Remove(p.Marker)
 		return Restart, State{RolledBack: true, Detail: fmt.Sprintf("새 버전 시작에 실패해 이전 버전으로 롤백했습니다(%s)", orUnknown(m.From))}
 	}
 	if err := writeMarker(p.Marker, m); err != nil {
-		log.Printf("[update] 更新升级标记失败：%v", err)
+		log.Printf("[update] failed to update upgrade marker: %v", err)
 	}
 	log.Printf("[update] new version starting (attempt %d/%d); the upgrade will be confirmed once it runs stably",
 		m.Attempts, maxAttempts)
@@ -147,7 +147,7 @@ func settle(p Paths) {
 		return // not a startup after an upgrade, nothing to do
 	}
 	if err := os.Remove(p.Marker); err != nil && !errors.Is(err, os.ErrNotExist) {
-		log.Printf("[update] 清除升级标记失败：%v", err)
+		log.Printf("[update] failed to clear upgrade marker: %v", err)
 		return
 	}
 	log.Printf("[update] new version is running stably, upgrade complete (previous version kept as %s)", p.Old)
@@ -262,7 +262,7 @@ func Rollback() error {
 		return fmt.Errorf("이전 버전 설치 실패: %w", err)
 	}
 	if err := os.Rename(tmp, p.Old); err != nil {
-		log.Printf("[update] 回滚后整理备份失败（不影响运行）：%v", err)
+		log.Printf("[update] failed to tidy backups after rollback (does not affect operation): %v", err)
 	}
 	_ = os.Remove(p.Marker)
 	return nil
