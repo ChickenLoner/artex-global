@@ -13,28 +13,28 @@ import (
 	"github.com/Autumn-27/artex/db"
 )
 
-// 취약점 페이지의 「내보내기」용 렌더링: 여러 건의 findings 테이블 행을 요약 Markdown,
-// 개별 Markdown, 또는 CSV 로 렌더링한다. JSON 은 server 계층이 DTO 로 직접 직렬화하므로
-// 여기서는 다루지 않는다.
+// Rendering for the vulnerability page's "Export": renders multiple findings table rows into a summary Markdown,
+// individual Markdown files, or a CSV. JSON is serialized directly as a DTO by the server layer,
+// so it is not handled here.
 
-// sortFindingsForExport 는 심각도 내림차순, 그다음 시각 역순으로 정렬한다. 요약 보고서의 그룹화와 동일하다.
+// sortFindingsForExport sorts by severity descending, then by time in reverse order. This matches the grouping of the summary report.
 func sortFindingsForExport(fs []*db.DBFinding) {
 	sort.SliceStable(fs, func(i, j int) bool {
 		ri, rj := sevRank[fs[i].Severity], sevRank[fs[j].Severity]
 		if ri != rj {
-			return ri < rj // sevRank 는 값이 작을수록 심각하다
+			return ri < rj // a smaller sevRank value means more severe
 		}
 		return fs[i].CreatedAt.After(fs[j].CreatedAt)
 	})
 }
 
-// findingTitle 은 취약점의 사람이 읽을 수 있는 제목을 고른다: 이름 → 유형 → 「미분류」.
+// findingTitle picks a human-readable title for a vulnerability: name → type → the "Unclassified" placeholder.
 func findingTitle(f *db.DBFinding) string {
 	return nz(f.Name, nz(f.VulnClass, "미분류"))
 }
 
-// FindingsMarkdown 은 여러 건의 findings 를 하나의 요약 보고서로 통합한다(요약 + 심각도별
-// 그룹화, 각 건은 유형/상태/소속 작업/증거/상세 보고서를 포함).
+// FindingsMarkdown consolidates multiple findings into one summary report (summary + grouping by
+// severity, with each entry including type/status/owning task/evidence/detail report).
 func FindingsMarkdown(fs []*db.DBFinding, generatedAt time.Time) string {
 	items := append([]*db.DBFinding(nil), fs...)
 	sortFindingsForExport(items)
@@ -44,7 +44,7 @@ func FindingsMarkdown(fs []*db.DBFinding, generatedAt time.Time) string {
 	fmt.Fprintf(&b, "- **생성 시각**: %s\n", generatedAt.Format("2006-01-02 15:04:05"))
 	fmt.Fprintf(&b, "- **취약점 총계**: %d건\n\n", len(items))
 
-	// 요약: 심각도별 집계.
+	// Summary: counts by severity.
 	counts := map[string]int{}
 	for _, f := range items {
 		counts[f.Severity]++
@@ -91,7 +91,7 @@ func FindingsMarkdown(fs []*db.DBFinding, generatedAt time.Time) string {
 	return b.String()
 }
 
-// SingleFindingMarkdown 은 개별 취약점을 독립된 Markdown 한 건으로 렌더링한다(「취약점 하나당 파일 하나」 묶음에 사용).
+// SingleFindingMarkdown renders an individual vulnerability as a standalone Markdown file (used for the "one file per vulnerability" bundle).
 func SingleFindingMarkdown(f *db.DBFinding, generatedAt time.Time) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# [%s] %s\n\n", strings.ToUpper(nz(f.Severity, "info")), findingTitle(f))
@@ -122,8 +122,8 @@ func SingleFindingMarkdown(f *db.DBFinding, generatedAt time.Time) string {
 
 var unsafeFilenameChars = regexp.MustCompile(`[^\p{Han}\p{L}\p{N}._-]+`)
 
-// FindingFilename 은 「취약점 하나당 파일 하나」를 위해 안전한 .md 파일 이름을 생성한다.
-// 예: `critical_SQL주입_#123.md`. 경로 구분자와 제어 문자를 제거하여 zip 내 비정상 경로를 막는다.
+// FindingFilename generates a safe .md file name for "one file per vulnerability".
+// Example: `critical_SQLi_#123.md`. Path separators and control characters are removed to prevent abnormal paths inside the zip.
 func FindingFilename(f *db.DBFinding) string {
 	sev := nz(f.Severity, "info")
 	title := findingTitle(f)
@@ -133,7 +133,7 @@ func FindingFilename(f *db.DBFinding) string {
 	if name == "" {
 		name = fmt.Sprintf("finding_%d", f.ID)
 	}
-	// 방어적 처리: 경로를 한 번 더 벗겨 zip slip 을 차단한다.
+	// Defensive handling: strip the path once more to block zip slip.
 	name = path.Base(name)
 	if len(name) > 120 {
 		name = name[:120]
@@ -141,9 +141,9 @@ func FindingFilename(f *db.DBFinding) string {
 	return name + ".md"
 }
 
-// FindingsCSV 는 여러 건의 findings 를 CSV 로 렌더링한다(UTF-8 BOM 포함, Excel 이 한글을
-// 올바르게 인식하도록). 긴 report/evidence 전문은 담지 않고 요약 성격의 필드만 넣는다.
-// 전문이 필요하면 Markdown/JSON 으로 내보낸다.
+// FindingsCSV renders multiple findings as a CSV (with a UTF-8 BOM so that Excel recognizes Korean
+// correctly). It does not carry the full text of long report/evidence fields, only summary-type fields.
+// If the full text is needed, export Markdown/JSON.
 func FindingsCSV(fs []*db.DBFinding) []byte {
 	items := append([]*db.DBFinding(nil), fs...)
 	sortFindingsForExport(items)
