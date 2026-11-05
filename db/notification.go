@@ -25,7 +25,7 @@ import (
 //     不可漏推。
 
 // ErrNotificationChannelNotFound 渠道不存在。
-var ErrNotificationChannelNotFound = errors.New("通知渠道不存在")
+var ErrNotificationChannelNotFound = errors.New("notification channel not found")
 
 // 投递状态。
 const (
@@ -138,7 +138,7 @@ func (d *DB) SaveNotificationChannel(ctx context.Context, c *NotificationChannel
 	// 「未指定」与「显式 0」的区别只有调用方知道（请求体里字段缺省 vs 明确传 0），
 	// 所以默认值由 server 层在字段缺省时填，见 notifyCreateChannel。
 	if c.RatePerMin < 0 {
-		return 0, errors.New("限流值不能为负")
+		return 0, errors.New("rate limit must not be negative")
 	}
 	if c.Config == nil {
 		c.Config = json.RawMessage(`{}`)
@@ -251,7 +251,7 @@ func RecordNotificationEventTx(ctx context.Context, tx *sql.Tx, kind string, fin
 func (d *DB) AddNotificationEvent(ctx context.Context, kind string, findingID int64, snap notify.Snapshot) (int64, error) {
 	raw, err := json.Marshal(snap)
 	if err != nil {
-		return 0, fmt.Errorf("序列化通知事件快照失败: %w", err)
+		return 0, fmt.Errorf("serialize notification event snapshot: %w", err)
 	}
 	var id int64
 	err = d.QueryRowContext(ctx, `INSERT INTO notification_events(kind,finding_id,snapshot) VALUES($1,$2,$3) RETURNING id`,

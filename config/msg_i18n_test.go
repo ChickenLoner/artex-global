@@ -44,10 +44,15 @@ func TestStartupMessageSwitchesLanguage(t *testing.T) {
 	}
 
 	// Chinese / Spanish / Japanese → non-empty and different from the Korean source.
-	for _, lang := range []string{"zh", "es", "ja"} {
+	for _, lang := range []string{"zh", "es", "ja", "th"} {
 		t.Setenv("ARTEX_LANG", lang)
 		if got := mustDSNErr(t); got == "" {
 			t.Errorf("%s startup error should be non-empty", lang)
+		}
+		if lang == "th" {
+			if got := mustDSNErr(t); hasHangul(got) || !containsStr(got, "ฐานข้อมูล") {
+				t.Errorf("th startup error should be Thai without Hangul: %q", got)
+			}
 		}
 	}
 }

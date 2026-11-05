@@ -2,13 +2,6 @@
 
 English · [한국어](README.ko.md)
 
-> 한국어: [`artex_host_triage.py`](artex_host_triage.py) 는 ARTEX 가 돌았다고 의심되는 **호스트 한 대에서 직접**
-> 돌리는 읽기 전용 분류(triage) 스크립트입니다. SIEM(Sigma)·네트워크 센서(Suricata)·위협 인텔리전스
-> 플랫폼(지표 CSV·MISP)을 쓰는 방어자 말고, SIEM 없이 의심 호스트의 셸 앞에 선 대응자를 위한 것입니다.
-> 리슨 포트·기록 프록시 아티팩트·로그 마커·PostgreSQL 스키마를 저장소 소스에 근거해 점검하고, 각 발견에
-> 같은 한계(포트는 바꿀 수 있음, CA 파일명은 단독 mitmproxy 와 공유됨 등)를 함께 적습니다. 자신이 소유하거나
-> 서면 허가를 받은 호스트에만 사용하십시오. 한국어 전체 문서는 **[README.ko.md](README.ko.md)** 를 보십시오.
-
 A read-only triage helper you run **on a single suspected host** to answer "did ARTEX run here?" from
 local state. The rest of this directory serves defenders who run a SIEM ([Sigma](../sigma/)), a network
 sensor ([Suricata](../suricata/)), or a threat-intelligence platform (the [indicators](../indicators/)).
@@ -34,8 +27,8 @@ carries the same honest caveat as the matching Sigma rule or indicator row.
   The CA is the trust anchor of an adversary-in-the-middle traffic recorder (ATT&CK T1557).
 - **Log markers** — the enrichment prober UA `artex-enrich/1.0` ([`enrich/enrich.go`](../../enrich/enrich.go)),
   the self-update egress UA `artex-selfupdate` ([`selfupdate/github.go`](../../selfupdate/github.go)), and
-  the platform-guard audit marker ([`guard/guard.go`](../../guard/guard.go); kept verbatim, including the
-  non-ASCII framing, so the grep matches) in the log file(s) you point it at. Rotated logs compressed as
+  the platform-guard audit marker ([`guard/guard.go`](../../guard/guard.go); both the current English
+  marker and the legacy Chinese one older versions emitted, kept verbatim so the grep matches) in the log file(s) you point it at. Rotated logs compressed as
   `.gz`/`.bz2`/`.xz` are decompressed and scanned too, so the host's log history is covered; a format with
   no standard-library codec (`.zst`/`.lz4`) is reported as **skipped** rather than silently treated as
   clean — decompress it first or `grep` it by hand.

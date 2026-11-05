@@ -73,7 +73,7 @@ const (
 	errNotifyDigestRange   = "요약 주기는 1~1440분 사이여야 합니다"
 
 	// 사용자 대면 출력 언어 설정 (putSettings)
-	errOutputLanguageInvalid = "지원하지 않는 언어입니다(en·ko·zh·es·ja 중 하나여야 합니다)"
+	errOutputLanguageInvalid = "지원하지 않는 언어입니다(en·ko·zh·es·ja·th 중 하나여야 합니다)"
 
 	// 메인 에이전트 대화·세션 (newMainSession / chat)
 	errTaskDeletingNewSession = "작업을 삭제하는 중이라 새 세션을 만들 수 없습니다"
@@ -1823,7 +1823,7 @@ func (s *Server) seed(t *Task, text string) {
 // origin fact (RelDerivedFrom) so it still traces back to a fact node. Best-effort —
 // a failure just falls back to the normal planner-driven flow.
 func (s *Server) seedFirstIntent(t *Task) {
-	summary := fmt.Sprintf("完成任务目标：%s（任务：%s）", t.Goal, t.Description)
+	summary := fmt.Sprintf("Complete the task goal: %s (task: %s)", t.Goal, t.Description)
 	id, err := t.Store.AddIntent(map[string]any{"summary": summary}, 8, nil, "seed")
 	if err != nil {
 		log.Printf("[seed] task %s: 下发种子意图失败: %v", t.ID, err)
@@ -3531,7 +3531,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.OutputLanguage != nil {
-		// 지원 언어("en"/"ko"/"zh"/"es")만 받는다. 에이전트 훅이 매 턴 읽으므로 즉시
+		// 지원 언어("en"/"ko"/"zh"/"es"/"ja"/"th")만 받는다. 에이전트 훅이 매 턴 읽으므로 즉시
 		// 적용되고 에이전트를 다시 생성할 필요가 없다.
 		lang := config.NormalizeLanguage(*req.OutputLanguage)
 		if lang == "" {

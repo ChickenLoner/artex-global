@@ -495,7 +495,7 @@ func TestConnection(ctx context.Context, c Config) (time.Duration, string, error
 	// 测试却报成功——正是本项要消除的落差。没有可见正文一律判失败。
 	reply = strings.TrimSpace(reply)
 	if reply == "" {
-		return lat, "", fmt.Errorf("模型无回复内容（请求已通，但未返回任何文本）")
+		return lat, "", fmt.Errorf("the model returned no reply (the request succeeded but no text came back)")
 	}
 	return lat, reply, nil
 }

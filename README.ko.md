@@ -4,9 +4,9 @@
 
 **LLM 멀티 에이전트가 자율적으로 침투 테스트를 수행하는 시스템** (Go 백엔드 + Next.js 프런트엔드)
 
-화면과 산출물은 영어가 기본이며, **설정(시스템 → 설정 → 표시 언어)에서 한국어·중국어·스페인어·일본어로도 바꿀 수 있습니다.** 언어를 바꾸면 에이전트가 생성하는 리포트·요약·대화 응답의 언어도 함께 바뀝니다.
+화면과 산출물은 영어가 기본이며, **설정(시스템 → 설정 → 표시 언어)에서 한국어·중국어·스페인어·일본어·태국어로도 바꿀 수 있습니다.** 언어를 바꾸면 에이전트가 생성하는 리포트·요약·대화 응답의 언어도 함께 바뀝니다.
 
-한국어 · [中文](README.zh.md) · [English](README.md) · [Español](README.es.md) · [日本語](README.ja.md)
+[English](README.md) · 한국어 · [中文](README.zh.md) · [Español](README.es.md) · [日本語](README.ja.md) · [ไทย](README.th.md)
 
 [![ci](https://github.com/jiwoochris/artex-global/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jiwoochris/artex-global/actions/workflows/ci.yml) [![detections](https://github.com/jiwoochris/artex-global/actions/workflows/detections.yml/badge.svg?branch=main)](https://github.com/jiwoochris/artex-global/actions/workflows/detections.yml) [![web](https://github.com/jiwoochris/artex-global/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/jiwoochris/artex-global/actions/workflows/web.yml) [![license: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
@@ -38,7 +38,7 @@ ARTEX 는 LLM 이 조종하는 여러 에이전트가 **스스로 목표를 쪼�
   이 제목의 엠대시(—)는 의도적으로 보존합니다. 저장소 스타일은 한국어 산문에서 엠대시를
   콜론으로 바꾸지만, 이 제목만은 예외입니다. GitHub 앵커 슬러그
   (#️-먼저-읽어-주세요--사용-범위와-국내법-고지, 엠대시 양옆 공백이 이중 하이픈 "--" 이 됩니다)를
-  다음 다섯 곳이 참조하기 때문입니다: CODE_OF_CONDUCT.md · CONTRIBUTING.md · SECURITY.md ·
+  다음 다섯 곳이 참조하기 때문입니다: CODE_OF_CONDUCT.ko.md · CONTRIBUTING.ko.md · SECURITY.ko.md ·
   .github/PULL_REQUEST_TEMPLATE.md · .github/ISSUE_TEMPLATE/config.yml.
   엠대시를 콜론으로 바꾸면 슬러그의 이중 하이픈이 단일 하이픈이 되어 다섯 링크가 모두 끊어집니다.
   제목을 바꾸려면 다섯 참조의 앵커를 함께 고치고 `python3 -I scripts/check-doc-links.py` 가
@@ -60,7 +60,7 @@ ARTEX 는 **자신이 소유하거나 서면으로 명시적 허가를 받은 �
 
 원본 ARTEX 는 프롬프트·UI·문서가 모두 중국어로 되어 있어, 중국어를 쓰지 않는 사용자가 결과를 읽고 팀과 공유하기가 번거로웠습니다. 이 글로벌판은 다음을 목표로 합니다.
 
-- **산출물의 다국어화**: 에이전트가 사람에게 내보내는 탐지 결과·사실 요약·최종 리포트·대화 응답을 설정한 언어(기본 영어이며 한국어·중국어·스페인어·일본어로 전환)로 출력하도록 강제합니다. 명령·페이로드·코드·URL·로그 원문은 분석에 필요하므로 원본 그대로 둡니다.
+- **산출물의 다국어화**: 에이전트가 사람에게 내보내는 탐지 결과·사실 요약·최종 리포트·대화 응답을 설정한 언어(기본 영어이며 한국어·중국어·스페인어·일본어·태국어로 전환)로 출력하도록 강제합니다. 명령·페이로드·코드·URL·로그 원문은 분석에 필요하므로 원본 그대로 둡니다.
 - **성능 보존**: 에이전트의 판단을 좌우하는 내부 추론 프롬프트(행동 지침 본문)는 번역하지 않습니다. 원문으로 벤치마크된 동작을 유지하고, 출력 언어만 바꿔 번역에서 오는 품질 저하를 피합니다.
 - **법적 고지**: "권한 범위 안에서만 사용" 경고를 분명히 제공하고, 메인테이너가 속한 대한민국 기준으로 정보통신망법·개인정보보호법 고지를 함께 둡니다. 어느 지역에서 쓰든 사용하는 곳의 법이 함께 적용됩니다.
 - **다양한 LLM 스택 대응**: LLM 공급자를 프런티어 모델뿐 아니라 OpenAI 호환 엔드포인트(자국·오픈 모델)로 교체할 수 있습니다. 아래 [설정](#설정)을 참고하십시오.
@@ -71,7 +71,7 @@ ARTEX 는 **자신이 소유하거나 서면으로 명시적 허가를 받은 �
 
 ## 화면 미리 보기
 
-아래 세 화면은 기본값인 영어 UI 입니다(설정에서 한국어·중국어·스페인어·일본어로도 바꿀 수 있습니다). 로컬 격리 샌드박스에서 뽑은 데모 데이터이고, 대상은 전부 가상의 `acme.com` 과 사설 대역입니다.
+아래 세 화면은 기본값인 영어 UI 입니다(설정에서 한국어·중국어·스페인어·일본어·태국어로도 바꿀 수 있습니다). 로컬 격리 샌드박스에서 뽑은 데모 데이터이고, 대상은 전부 가상의 `acme.com` 과 사설 대역입니다.
 
 <p align="center">
   <img src="screenshots/en/dashboard.png" width="900" alt="대시보드: 전체 개요 화면"><br>
@@ -362,7 +362,7 @@ flowchart TB
   - **[호스트 분류(triage) 스크립트 (detections/triage/README.ko.md)](detections/triage/README.ko.md)**: SIEM 이나 네트워크 센서 없이 의심 호스트 한 대의 셸 앞에 선 대응자를 위한 읽기 전용 스크립트 [`artex_host_triage.py`](detections/triage/artex_host_triage.py) 입니다. 위 규칙과 같은 지문을 점검하고, 여기에 더해 로그나 네트워크로는 관측되지 않아 침해지표 CSV 가 의도적으로 Sigma 규칙 없이 둔 세 가지 호스트·DB 지표(서버 리슨 포트, 기록 프록시 엔드포인트, PostgreSQL 탐색 스키마)까지 호스트에서 직접 확인합니다. 추가 설치 없이 표준 라이브러리만으로 동작하며, 각 발견은 대응하는 침해지표 행과 같은 한계를 지닌 분류 단서일 뿐 그 자체로 단정하는 근거는 아닙니다.
   - 위 규칙과 레이어와 지표, 그리고 호스트 분류 스크립트의 자가 테스트는 모두 저장소 테스트([detections/tests/README.ko.md](detections/tests/README.ko.md))로 재실행해 검증합니다. 돌려 볼 수 없는 탐지 규칙은 주장일 뿐이라는 원칙을 따릅니다.
 
-> 이 자료는 계속 보강됩니다. 보완할 탐지 규칙·하드닝 항목은 이슈로 제안해 주시고, 규칙을 직접 보내실 때는 [기여 가이드의 「탐지 규칙·탐지 테스트 기여」 절](CONTRIBUTING.md#탐지-규칙탐지-테스트-기여)에 정리한 계약(관측 가능한 사실에 접지, 한계 명시, 정적 검증 통과, 재현 가능한 테스트 동봉)을 따라 주십시오.
+> 이 자료는 계속 보강됩니다. 보완할 탐지 규칙·하드닝 항목은 이슈로 제안해 주시고, 규칙을 직접 보내실 때는 [기여 가이드의 「탐지 규칙·탐지 테스트 기여」 절](CONTRIBUTING.ko.md#탐지-규칙탐지-테스트-기여)에 정리한 계약(관측 가능한 사실에 접지, 한계 명시, 정적 검증 통과, 재현 가능한 테스트 동봉)을 따라 주십시오.
 
 ---
 
@@ -381,7 +381,7 @@ flowchart TB
 
 그 밖의 개발 항목(수동 취약점 재검증 등)은 [`README.zh.md`](README.zh.md#开发)의 "开发"(개발) 절을 참고하십시오.
 
-이 글로벌판이 상류 ARTEX 에 더한 변경은 [변경 이력(CHANGELOG.md)](CHANGELOG.md)에 정리되어 있습니다.
+이 글로벌판이 상류 ARTEX 에 더한 변경은 [변경 이력(CHANGELOG.ko.md)](CHANGELOG.ko.md)에 정리되어 있습니다.
 
 ---
 

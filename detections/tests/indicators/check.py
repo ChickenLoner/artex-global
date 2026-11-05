@@ -79,8 +79,14 @@ INDICATORS = [
         "rules": ["detections/sigma/artex_selfupdate_egress.yml"],
     },
     {
-        "label": "platform-guard audit framing marker",
+        "label": "platform-guard audit framing marker (legacy Chinese)",
         "value": "【ARTEX 平台管控·非目标防御】",
+        "sources": ["guard/guard.go"],
+        "rules": ["detections/sigma/artex_guard_audit_framing.yml"],
+    },
+    {
+        "label": "platform-guard audit framing marker (English)",
+        "value": "[ARTEX PLATFORM CONTROL - NOT TARGET DEFENSE]",
         "sources": ["guard/guard.go"],
         "rules": ["detections/sigma/artex_guard_audit_framing.yml"],
     },

@@ -3,6 +3,7 @@ package guard
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/Autumn-27/norma/hook"
@@ -36,19 +37,29 @@ func TestPreToolUsePassthrough(t *testing.T) {
 	}
 }
 
-// TestSystemBlockMessagePreservedIsBrainInput pins the platform-governance framing
-// (systemBlockMessage) to its original Chinese bytes. That framing is the model-facing
-// tool_result that steers the pentest agent away from bypassing an intercept block
-// (see guard.go doc comment + the F14 보존 판단). For the ask-block paths the same
-// framed string also lands in the /api/audit record via g.record, so one string serves
-// both the agent input and the audit display — it must NOT be translated, or benchmarked
-// agent behavior could drift. This test fails if the framing is accidentally localized.
-func TestSystemBlockMessagePreservedIsBrainInput(t *testing.T) {
-	got := systemBlockMessage("<原因>")
-	want := "【ARTEX 平台管控·非目标防御】此调用被平台拦截。原因：<原因>。此操作被禁止。"
+// TestSystemBlockMessageFraming pins the platform-governance framing: a fixed ASCII
+// marker, the reason, and the plain statement that the operation is forbidden. The
+// legacy Chinese marker is kept as a constant only so detections can match older
+// ARTEX versions.
+func TestSystemBlockMessageFraming(t *testing.T) {
+	got := systemBlockMessage("<reason>")
+	want := "[ARTEX PLATFORM CONTROL - NOT TARGET DEFENSE] This call was blocked by the platform. Reason: <reason>. This operation is forbidden."
 	if got != want {
-		t.Errorf("systemBlockMessage framing drifted (F14 두뇌 보존 — 원문 유지해야 함):\n got %q\nwant %q", got, want)
+		t.Errorf("systemBlockMessage framing drifted:\n got %q\nwant %q", got, want)
+	}
+	if LegacyBlockMarker != "【ARTEX 平台管控·非目标防御】" {
+		t.Errorf("legacy marker constant changed")
 	}
 }
 
 var _ = hook.PreToolUse
+
+func TestSystemBlockMessageStripsModelSentinel(t *testing.T) {
+	got := systemBlockMessage("[模型] Deletes a production file")
+	if strings.Contains(got, "[模型]") {
+		t.Fatalf("sentinel leaked into block message: %q", got)
+	}
+	if want := systemBlockMessage("Deletes a production file"); got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}

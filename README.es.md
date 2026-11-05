@@ -4,9 +4,9 @@
 
 **Un sistema autónomo de pruebas de penetración impulsado por multiagentes LLM** (backend en Go + frontend en Next.js)
 
-La interfaz y la salida generada están en inglés de forma predeterminada y **pueden cambiarse a coreano, chino, español o japonés en Ajustes (Sistema → Ajustes → Idioma de la interfaz).** Cambiar el idioma también cambia el idioma de los informes, los resúmenes y las respuestas de chat que generan los agentes.
+La interfaz y la salida generada están en inglés de forma predeterminada y **pueden cambiarse a coreano, chino, español, japonés o tailandés en Ajustes (Sistema → Ajustes → Idioma de la interfaz).** Cambiar el idioma también cambia el idioma de los informes, los resúmenes y las respuestas de chat que generan los agentes.
 
-Español · [English](README.md) · [한국어](README.ko.md) · [中文](README.zh.md) · [日本語](README.ja.md)
+[English](README.md) · [한국어](README.ko.md) · [中文](README.zh.md) · Español · [日本語](README.ja.md) · [ไทย](README.th.md)
 
 [![ci](https://github.com/jiwoochris/artex-global/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jiwoochris/artex-global/actions/workflows/ci.yml) [![detections](https://github.com/jiwoochris/artex-global/actions/workflows/detections.yml/badge.svg?branch=main)](https://github.com/jiwoochris/artex-global/actions/workflows/detections.yml) [![web](https://github.com/jiwoochris/artex-global/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/jiwoochris/artex-global/actions/workflows/web.yml) [![license: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
@@ -32,7 +32,7 @@ Español · [English](README.md) · [한국어](README.ko.md) · [中文](README
 
 ARTEX es un sistema en el que varios agentes impulsados por LLM ejecutan de forma autónoma una prueba de penetración: **descomponen los objetivos por su cuenta, ejecutan herramientas reales y van acumulando en un grafo los activos y las vulnerabilidades que descubren** a medida que avanzan. Un único binario de Go incorpora el frontend de Next.js embebido, y todos los datos se almacenan en PostgreSQL.
 
-> **Nota sobre el idioma de esta edición.** Este fork hace que el producto se pueda usar en cinco idiomas — **inglés (predeterminado), coreano, chino, español y japonés** — seleccionables en Ajustes. La salida orientada al usuario se fuerza al idioma seleccionado, mientras que los prompts de razonamiento interno de los agentes se mantienen en el idioma original para preservar el rendimiento medido en los benchmarks. Consulte [Configuración](#configuración) para saber cómo se impone el idioma de salida mediante una pequeña directiva fijada en el código.
+> **Nota sobre el idioma de esta edición.** Este fork hace que el producto se pueda usar en seis idiomas — **inglés (predeterminado), coreano, chino, español, japonés y tailandés** — seleccionables en Ajustes. La salida orientada al usuario se fuerza al idioma seleccionado, mientras que los prompts de razonamiento interno de los agentes se mantienen en el idioma original para preservar el rendimiento medido en los benchmarks. Consulte [Configuración](#configuración) para saber cómo se impone el idioma de salida mediante una pequeña directiva fijada en el código.
 
 ---
 
@@ -53,7 +53,7 @@ Los términos completos de la licencia, las restricciones de uso y el descargo d
 
 El ARTEX original tiene sus prompts, su interfaz y su documentación enteramente en chino, lo que resultaba engorroso para cualquiera que no lea chino a la hora de leer los resultados y compartirlos con un equipo. Esta edición busca:
 
-- **Localizar la salida** — los hallazgos, los resúmenes de hechos, los informes finales y las respuestas de chat que los agentes muestran a una persona se fuerzan al idioma seleccionado (inglés de forma predeterminada; coreano, chino, español y japonés seleccionables). Los comandos, los payloads, el código, las URL y los registros en bruto se necesitan para el análisis y se dejan en su forma original.
+- **Localizar la salida** — los hallazgos, los resúmenes de hechos, los informes finales y las respuestas de chat que los agentes muestran a una persona se fuerzan al idioma seleccionado (inglés de forma predeterminada; coreano, chino, español, japonés y tailandés seleccionables). Los comandos, los payloads, el código, las URL y los registros en bruto se necesitan para el análisis y se dejan en su forma original.
 - **Preservar el rendimiento** — los prompts de razonamiento interno (el cuerpo de instrucciones de comportamiento) que guían el juicio de los agentes **no** se traducen. El comportamiento medido en los benchmarks en el idioma original se mantiene intacto, y solo cambia el idioma de salida, lo que evita la deriva de calidad que introduce la traducción.
 - **Enunciar los límites legales** — la advertencia de "solo dentro del alcance autorizado" se expresa con claridad, junto con los avisos específicos de Corea sobre derecho de redes y privacidad (los mantenedores residen en Corea); también se aplica la ley del lugar donde usted opere.
 - **Dar soporte a diversas infraestructuras de LLM** — el proveedor de LLM puede cambiarse de un modelo de frontera a cualquier endpoint compatible con OpenAI (modelos locales o abiertos). Consulte [Configuración](#configuración).
@@ -64,7 +64,7 @@ El ARTEX original tiene sus prompts, su interfaz y su documentación enteramente
 
 ## Capturas de pantalla
 
-Las tres pantallas siguientes muestran la interfaz predeterminada en inglés (conmutable a coreano, chino, español y japonés en Ajustes). Los datos provienen de un entorno de pruebas local y aislado: todos los objetivos son el ficticio `acme.com` y rangos de direcciones privadas.
+Las tres pantallas siguientes muestran la interfaz predeterminada en inglés (conmutable a coreano, chino, español, japonés y tailandés en Ajustes). Los datos provienen de un entorno de pruebas local y aislado: todos los objetivos son el ficticio `acme.com` y rangos de direcciones privadas.
 
 <p align="center">
   <img src="screenshots/en/dashboard.png" width="900" alt="Vista general del panel"><br>
@@ -356,7 +356,7 @@ Este repositorio busca ayudar al **lado defensor** a entender cómo funcionan lo
   - **[Script de triaje de host (detections/triage/)](detections/triage/)**: un script de solo lectura, [`artex_host_triage.py`](detections/triage/artex_host_triage.py), para el respondedor que está ante el shell de un único host sospechoso sin SIEM ni sensor de red. Comprueba las mismas huellas que las reglas anteriores, más — en la propia máquina — los tres indicadores de host/BD que el CSV de indicadores lleva deliberadamente sin una regla Sigma porque no son observables por log ni por red (el puerto de escucha del servidor, el endpoint del proxy de registro y el esquema de exploración de PostgreSQL). Se ejecuta solo con la biblioteca estándar, sin nada que instalar, y cada hallazgo es una pista de triaje que lleva la misma advertencia que su fila de indicador, nunca una atribución por sí solo.
   - Las reglas, la capa, los indicadores anteriores y la autoprueba del script de triaje de host se vuelven a ejecutar y verificar mediante los tests del repositorio ([detections/tests/](detections/tests/)): una regla de detección que no se puede ejecutar es solo una afirmación.
 
-> Este material se amplía continuamente. Sugiera reglas de detección o elementos de endurecimiento adicionales como issues, y cuando envíe una regla directamente, siga el contrato de [la sección "Contributing detection rules and detection tests" de la guía de contribución](CONTRIBUTING.en.md#contributing-detection-rules-and-detection-tests) (fundamente cada indicador en un hecho observable, enuncie los límites, pase la validación estática e incluya un test reproducible).
+> Este material se amplía continuamente. Sugiera reglas de detección o elementos de endurecimiento adicionales como issues, y cuando envíe una regla directamente, siga el contrato de [la sección "Contributing detection rules and detection tests" de la guía de contribución](CONTRIBUTING.md#contributing-detection-rules-and-detection-tests) (fundamente cada indicador en un hecho observable, enuncie los límites, pase la validación estática e incluya un test reproducible).
 
 ---
 
@@ -375,7 +375,7 @@ Desarrollo y pruebas locales:
 
 Para otros temas de desarrollo (como la reverificación manual de vulnerabilidades), consulte la sección "开发" (Desarrollo) de [`README.zh.md`](README.zh.md#开发).
 
-Los cambios que esta edición global añade sobre el ARTEX original se registran en el [registro de cambios (CHANGELOG.en.md)](CHANGELOG.en.md).
+Los cambios que esta edición global añade sobre el ARTEX original se registran en el [registro de cambios (CHANGELOG.md)](CHANGELOG.md).
 
 ---
 

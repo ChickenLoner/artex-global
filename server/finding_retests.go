@@ -164,7 +164,7 @@ func (s *Server) findingRetestTools() []actool.CoreTool {
 					return actool.Errorf(err.Error()), nil
 				}
 				if r == nil {
-					return actool.Errorf("当前会话未关联复测记录，请从漏洞详情发起复测"), nil
+					return actool.Errorf("This conversation is not linked to a retest record; start the retest from the finding details"), nil
 				}
 				var constraints []db.Constraint
 				f, err := s.m.pg.GetFinding(r.FindingID)

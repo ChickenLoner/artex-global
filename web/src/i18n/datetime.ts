@@ -11,6 +11,7 @@ const DATE_LOCALE: Record<Locale, string> = {
   zh: "zh-CN",
   es: "es-ES",
   ja: "ja-JP",
+  th: "th-TH-u-ca-gregory",
 };
 
 export function getDateLocale(): string {
