@@ -32,28 +32,28 @@ const MOCK_LOGS: LogLine[] = [
     ts: "2026-07-26T03:56:10Z",
     level: "info",
     tag: "planner",
-    text: "task t-acme-web: 계획 3라운드, 의도 i-4 생성",
+    text: "task t-acme-web: planning round 3, intent i-4 created",
   },
   {
     seq: 4,
     ts: "2026-07-26T03:57:00Z",
     level: "warn",
     tag: "guard",
-    text: "block bash: 범위 이탈, out.evil.example 는 scope 밖",
+    text: "block bash: out of scope, out.evil.example is outside the scope",
   },
   {
     seq: 5,
     ts: "2026-07-26T03:57:30Z",
     level: "info",
     tag: "work#1",
-    text: "report_finding: Default Credentials (high) 저장 완료",
+    text: "report_finding: Default Credentials (high) saved",
   },
   {
     seq: 6,
     ts: "2026-07-26T03:58:20Z",
     level: "error",
     tag: "work#3",
-    text: "intercept: mysqldump 파괴적 규칙 적중, 사람 승인 대기",
+    text: "intercept: mysqldump matched a destructive rule, waiting for human approval",
   },
 ];
 

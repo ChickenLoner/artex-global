@@ -473,7 +473,7 @@ function DraftChat({
           <Bot className="text-primary size-6" />
         </div>
         <div className="text-sm font-medium">
-          {t("emptyStart", { agent: agent ? draftLabels.name(agent) : "에이전트" })}
+          {t("emptyStart", { agent: agent ? draftLabels.name(agent) : "Agent" })}
         </div>
         {agent && draftLabels.description(agent) && (
           <p className="text-muted-foreground max-w-md text-xs">{draftLabels.description(agent)}</p>

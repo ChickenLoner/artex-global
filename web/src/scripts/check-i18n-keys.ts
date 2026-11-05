@@ -29,24 +29,24 @@ const baseline = readLocale(BASELINE);
 let failed = false;
 
 console.log("─".repeat(64));
-console.log(`i18n 키 정합성 검사 (기준: ${BASELINE}.json, ${baseline.size} 키)`);
+console.log(`i18n key consistency check (baseline: ${BASELINE}.json, ${baseline.size} keys)`);
 console.log("─".repeat(64));
 
 for (const locale of LOCALES) {
   const diff = diffKeys(baseline, readLocale(locale));
   if (isInSync(diff)) {
-    console.log(`[OK] ${locale}.json — 일치`);
+    console.log(`[OK] ${locale}.json: in sync`);
     continue;
   }
   failed = true;
-  console.log(`[FAIL] ${locale}.json — 불일치`);
-  if (diff.missing.length) console.log(`   누락 ${diff.missing.length}: ${preview(diff.missing)}`);
-  if (diff.extra.length) console.log(`   추가 ${diff.extra.length}: ${preview(diff.extra)}`);
+  console.log(`[FAIL] ${locale}.json: out of sync`);
+  if (diff.missing.length) console.log(`   missing ${diff.missing.length}: ${preview(diff.missing)}`);
+  if (diff.extra.length) console.log(`   extra ${diff.extra.length}: ${preview(diff.extra)}`);
 }
 
 console.log("─".repeat(64));
 if (failed) {
-  console.error("i18n 키가 어긋났습니다. 누락/추가 키를 맞춘 뒤 다시 실행하세요.");
+  console.error("i18n keys are out of sync. Fix the missing/extra keys and run again.");
   process.exit(1);
 }
-console.log("모든 로케일의 키 집합이 일치합니다.");
+console.log("All locales have the same key set.");
