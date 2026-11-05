@@ -92,10 +92,10 @@ func TestSideUsageRecordedOnceOnConsumerCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pg.Close()
-	// llm_usage 는 db.Open 의 기본 스키마에 들어 있지 않고 EnsureLLMUsageTable 로만
-	// 만들어진다(운영에서는 server/manager.go 가 호출한다). 격리된 빈 데이터베이스에서
-	// 이 테스트를 단독으로 돌릴 때 다른 패키지가 같은 데이터베이스에 테이블을 먼저
-	// 만들어 주기를 기대하지 않도록, 여기서 직접 테이블 존재를 보장한다.
+	// llm_usage is not in db.Open's default schema and is only
+	// created by EnsureLLMUsageTable (in production server/manager.go calls it). So that running
+	// this test alone against an isolated empty database does not depend on another package having created the table
+	// in the same database first, the table's existence is guaranteed here directly.
 	if err := pg.EnsureLLMUsageTable(); err != nil {
 		t.Fatal(err)
 	}

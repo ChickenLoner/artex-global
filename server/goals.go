@@ -12,11 +12,11 @@ import (
 	"github.com/Autumn-27/artex/db"
 )
 
-// admitPausedTask 재개 경로(requirePaused)의 사전 조건 검증 오류 문구다. 두 문구는
-// 단건(server.go:1194 → writeErr 409)·배치(task_control.go:298 → items[].error) 작업 제어
-// 응답으로만 사용자에게 노출된다. 오케스트레이터 경로(orchestration.go:343)는 action="pause"
-// 로 고정이라 재개 검증에 닿지 않으므로 두뇌 입력이 아니다. 용어는 task_control.go 의
-// 종료 상태·일시정지 문구와 맞춘다(resume=재개).
+// admitPausedTask: precondition-validation error texts for the resume path (requirePaused). The two texts are
+// shown to the user only as responses of task control for a single task (server.go:1194 -> writeErr 409) and for a batch (task_control.go:298 -> items[].error).
+// The orchestrator path (orchestration.go:343) is fixed to action="pause",
+// so it never reaches resume validation and therefore is not brain input. The terminology is aligned with the
+// terminal-state and pause wording in task_control.go (resume).
 const (
 	errGoalResumeTerminal  = "종료된 작업은 재개할 수 없습니다"
 	errGoalResumeNotPaused = "일시정지된 작업만 재개할 수 있습니다"
@@ -28,16 +28,16 @@ type goalSpec struct {
 }
 
 // launchTask runs the shared post-creation sequence for a task created via ANY
-// path (HTTP createTask 或 orchestration spawn_task),避免两处复制粘贴:
-//  1. seed 根资产,喂给事件驱动 loop;
-//  2. 可选种子意图,worker 免等首轮 planner 直接开跑;
-//  3. 后台异步做目标分解(发「0차 목표 분해」round + LLM 分解步骤 + 逐条 goal,页面可见),
-//     分解完再 engine.Run —— 引擎在 goal 节点就绪后才启动,避免 planner 抢在 goal 之前跑的竞态。
+// path (HTTP createTask or orchestration spawn_task), avoiding copy-paste in two places:
+//  1. seed the root assets and feed the event-driven loop;
+//  2. optional seed intents, so workers can start right away without waiting for the first planner round;
+//  3. asynchronously run goal decomposition in the background (emit a first-pass goal decomposition round (the Korean label goalBreakdownRound0Summary) + the LLM decomposition step + each goal, visible on the page),
+//     then engine.Run after decomposition - the engine only starts once the goal nodes are ready, avoiding the race of the planner running ahead of the goals.
 //
-// 异步(goroutine)所以调用方立即返回,两条路径行为一致:秒建任务、后台拆目标。
-// 표시 전용 활동 요약(작업 단위·node_id 없음·전사에만 노출·되먹임 경로 미접촉).
-// 초기 목표 분해 라운드와 동시 실행 대기열 상태 안내다. 한국어화해도 두뇌 입력
-// (BRIEF 경계 #1)을 건드리지 않는다. 포맷 인자(%d)는 원형 보존. [[G132]]
+// Asynchronous (goroutine), so the caller returns immediately and both paths behave the same: the task is created in seconds and goals are split in the background.
+// Display-only activity summaries (task-level, no node_id, shown only in the transcript, no feedback path touched).
+// They announce the initial goal decomposition round and the concurrent-run queue status. Localizing them into Korean does not touch brain input
+// (BRIEF boundary #1). Format arguments (%d) are preserved verbatim. [[G132]]
 const (
 	goalBreakdownRound0Summary       = "0차 목표 분해"
 	queuedConcurrencyLimitSummaryFmt = "대기열 등록: 동시 실행 상한 %d개에 도달해, 빈자리가 나면 자동으로 시작합니다"
@@ -366,12 +366,12 @@ func (s *Server) reconcileConcurrency() {
 	}
 }
 
-// reviveTask 让一个已停下的任务重新跑起来:把终态(done/failed/timeout)拉回 running、
-// 解除暂停,并(重)启动引擎循环 + 唤醒。已在 running 且未暂停的任务:只剩 Run 里的一次
-// Notify,近乎无副作用。用于「主 agent set_goals 新增目标」和「重跑 blocked 意图」两处。
+// reviveTask restarts a stopped task: pulls a terminal state (done/failed/timeout) back to running,
+// clears pause, and (re)starts the engine loop + wakes it. For a task already running and not paused: only one Notify
+// inside Run remains, with almost no side effects. Used in two places: "main agent set_goals adds goals" and "re-run a blocked intent".
 //
-// 为什么必须显式复活:planner/worker 循环的终态门(engine.go)会吞掉普通 notify——光改
-// 图 + Notify 唤不醒已判完成的任务;重启后终态任务的 goroutine 也可能已不在,故还要 Run。
+// Why an explicit revive is required: the terminal gate of the planner/worker loop (engine.go) swallows an ordinary notify - merely changing the
+// graph + Notify cannot wake a task already judged complete; after a restart the terminal task's goroutine may also be gone, so Run is needed as well.
 func (s *Server) reviveTask(t *Task) {
 	if t == nil {
 		return
@@ -416,7 +416,7 @@ func (s *Server) createGoals(ctx context.Context, t *Task, emit func(db.Activity
 		// as a single goal so the task still has something to judge against. This is the
 		// only path that writes here — decomposed goals are already persisted by the tool.
 		if g := strings.TrimSpace(t.Goal); g != "" {
-			log.Printf("[goals] task %s: LLM 目标拆解无产出，回退为「原始目标作为单目标」", t.ID)
+			log.Printf("[goals] task %s: LLM goal decomposition produced no output; falling back to \"original goal as the single goal\"", t.ID)
 			origin, _ := t.Store.OriginFactID()
 			id, _ := t.Store.AddNode(db.KindGoal, map[string]any{"text": g}, 0, "open", "system", nil)
 			if origin > 0 && id > 0 {

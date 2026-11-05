@@ -3,9 +3,9 @@ package notify
 import "testing"
 
 func TestParseFilterMalformedFallsBackToMatchAll(t *testing.T) {
-	// 畸形 JSON、空输入、类型不对的字段——全部必须退化为零值 Filter，
-	// 即「不过滤」。这条不变量是「宁可多推不可漏推」的落点：
-	// 一旦这里改成报错或半解析，用户配错一个字符就会静默丢掉所有高危通知。
+	// Malformed JSON, empty input, wrong-typed fields - all must degrade to a zero-value Filter,
+	// i.e. "no filtering". This invariant is where "better to over-push than to miss a push" lands:
+	// if this were changed to report an error or parse partially, a single mistyped character would silently drop all high-severity notifications.
 	cases := []struct {
 		name string
 		raw  string
@@ -22,7 +22,7 @@ func TestParseFilterMalformedFallsBackToMatchAll(t *testing.T) {
 			if f.MinSeverity != "" || len(f.TaskIDs) != 0 || len(f.AssetIDs) != 0 {
 				t.Fatalf("畸形配置应退化为零值 Filter，得到 %+v", f)
 			}
-			// 零值 Filter 必须命中任意事件。
+			// A zero-value Filter must match any event.
 			ev := Snapshot{Kind: EventFindingCreated, Severity: "low", VulnClass: "XSS"}
 			if !Match(f, ev) {
 				t.Fatal("零值 Filter 应命中所有事件")
@@ -48,7 +48,7 @@ func TestMatchSeverityThreshold(t *testing.T) {
 		{"high", "low", false},
 		{"critical", "high", false},
 		{"critical", "critical", true},
-		// 未知级别序数为 0，应被任何非空门槛挡住（存疑时不推）。
+		// An unknown level has ordinal 0 and should be blocked by any non-empty threshold (when in doubt, do not push).
 		{"low", "", false},
 		{"low", "unknown", false},
 		{"", "", true},
@@ -109,12 +109,12 @@ func TestMatchVulnClassKeywords(t *testing.T) {
 		{"大小写不敏感", Filter{VulnClassInclude: []string{"sql"}}, "SQL注入", true},
 		{"exclude 命中即排除", Filter{VulnClassExclude: []string{"信息泄露"}}, "信息泄露", false},
 		{"exclude 未命中则放行", Filter{VulnClassExclude: []string{"信息泄露"}}, "SQL注入", true},
-		// 排除优先于包含：同时命中时应当出局。
+		// Exclude takes precedence over include: when both match, the event is out.
 		{"排除优先于包含", Filter{
 			VulnClassInclude: []string{"SQL"},
 			VulnClassExclude: []string{"注入"},
 		}, "SQL注入", false},
-		// 纯空白关键词应被忽略，否则会退化成「匹配所有含空格的字符串」。
+		// A whitespace-only keyword should be ignored, otherwise it degrades into "match every string containing a space".
 		{"空白关键词被忽略", Filter{VulnClassInclude: []string{"", "  "}}, "SQL注入", false},
 	}
 	for _, tc := range cases {
@@ -128,14 +128,14 @@ func TestMatchVulnClassKeywords(t *testing.T) {
 
 func TestMatchStatusChangeRequiresOptIn(t *testing.T) {
 	ev := Snapshot{Kind: EventFindingStatusChanged, Severity: "critical", FromStatus: "pending", ToStatus: "fixed"}
-	// 默认关：绝大多数人说的「推送漏洞」指发现新漏洞，不是状态流水账。
+	// Off by default: what most people mean by "push vulnerabilities" is discovering new vulnerabilities, not a status change ledger.
 	if Match(Filter{MinSeverity: "low"}, ev) {
 		t.Fatal("状态变更事件在未开启时应被跳过")
 	}
 	if !Match(Filter{OnStatusChange: true}, ev) {
 		t.Fatal("开启 on_status_change 后状态变更事件应命中")
 	}
-	// 创建事件不受 on_status_change 影响。
+	// Create events are not affected by on_status_change.
 	created := Snapshot{Kind: EventFindingCreated, Severity: "critical"}
 	if !Match(Filter{MinSeverity: "low"}, created) {
 		t.Fatal("创建事件不应依赖 on_status_change")

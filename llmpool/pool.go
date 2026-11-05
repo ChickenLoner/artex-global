@@ -106,11 +106,11 @@ func (p *Pool) Stream(ctx context.Context, req llm.CompletionRequest) iter.Seq2[
 			lastErr = failed
 			hard := isHardFailure(failed)
 			if p.health.Trip(m.ID, trimErr(failed), hard) {
-				log.Printf("[llmpool] 配置 %q(%s) 已熔断：%s", m.Name, m.Model, trimErr(failed))
+				log.Printf("[llmpool] config %q(%s) circuit-broken: %s", m.Name, m.Model, trimErr(failed))
 			}
 			if i+1 < len(order) {
 				n := order[i+1]
-				log.Printf("[llmpool] LLM 故障转移：%q(%s) → %q(%s)，原因：%s",
+				log.Printf("[llmpool] LLM failover: %q(%s) → %q(%s), reason: %s",
 					m.Name, m.Model, n.Name, n.Model, trimErr(failed))
 			}
 		}
@@ -145,11 +145,11 @@ func (p *Pool) Complete(ctx context.Context, req llm.CompletionRequest) (llm.Mes
 		lastErr = err
 		hard := isHardFailure(err)
 		if p.health.Trip(m.ID, trimErr(err), hard) {
-			log.Printf("[llmpool] 配置 %q(%s) 已熔断：%s", m.Name, m.Model, trimErr(err))
+			log.Printf("[llmpool] config %q(%s) circuit-broken: %s", m.Name, m.Model, trimErr(err))
 		}
 		if i+1 < len(order) {
 			n := order[i+1]
-			log.Printf("[llmpool] LLM 故障转移：%q(%s) → %q(%s)，原因：%s",
+			log.Printf("[llmpool] LLM failover: %q(%s) → %q(%s), reason: %s",
 				m.Name, m.Model, n.Name, n.Model, trimErr(err))
 		}
 	}

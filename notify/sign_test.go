@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-// 签名基准值由 OpenSSL 独立算出，不是用本包自己的实现生成的——
-// 否则只能证明「代码没变」，证明不了「算法对」。
+// The signature reference values were computed independently by OpenSSL, not generated with this package's own implementation —
+// otherwise they could only prove "the code did not change", not that "the algorithm is correct".
 //
 //	TS=1700000000000, SECRET=SECtest123
-//	钉钉: printf '%s\n%s' "$TS" "$SECRET" | openssl dgst -sha256 -hmac "$SECRET" -binary | openssl base64 -A
+//	DingTalk: printf '%s\n%s' "$TS" "$SECRET" | openssl dgst -sha256 -hmac "$SECRET" -binary | openssl base64 -A
 //	      -> w3RMHXzixTMdzr8OHJUmVLS4IoPJVdu+Ut1LE48MePE=
-//	飞书: printf '' | openssl dgst -sha256 -hmac "$(printf '%s\n%s' "$TS" "$SECRET")" -binary | openssl base64 -A
+//	Feishu: printf '' | openssl dgst -sha256 -hmac "$(printf '%s\n%s' "$TS" "$SECRET")" -binary | openssl base64 -A
 //	      -> Hd4xFWQU6R6ad4nzy4ETIznzlqebqH7xcTFVmONTudo=
 const (
 	signTestTSMillis = int64(1700000000000)
@@ -37,7 +37,7 @@ func TestDingTalkSignMatchesReference(t *testing.T) {
 	if q.Get("timestamp") != "1700000000000" {
 		t.Errorf("时间戳应为毫秒且原样带上，得到 %q", q.Get("timestamp"))
 	}
-	// 原有 query 参数（access_token）不能被签名覆盖掉。
+	// The original query parameter (access_token) must not be overwritten by the signature.
 	if q.Get("access_token") != "tok" {
 		t.Errorf("原有 query 参数丢失，得到 %q", q.Get("access_token"))
 	}
@@ -50,9 +50,9 @@ func TestFeishuSignMatchesReference(t *testing.T) {
 	}
 }
 
-// TestSignAlgorithmsDiffer 锁住两家的算法差异。它们刚好互为对方的参数顺序
-// （钉钉 key=secret，飞书 key=待签串），照另一家抄必然校验失败，
-// 这条用例确保将来重构不会把两者合并成同一个函数。
+// TestSignAlgorithmsDiffer locks down the algorithm difference between the two vendors. Each is exactly the other's parameter order
+// (DingTalk key=secret, Feishu key=string to sign), so copying the other vendor's approach necessarily fails verification;
+// this test ensures a future refactor will not merge the two into one function.
 func TestSignAlgorithmsDiffer(t *testing.T) {
 	ts := "1700000000000"
 	dingURL, err := dingTalkSignedURL("https://example.com/hook", signTestSecret, time.UnixMilli(signTestTSMillis))
@@ -66,7 +66,7 @@ func TestSignAlgorithmsDiffer(t *testing.T) {
 }
 
 func TestDingTalkNoSecretLeavesURLUntouched(t *testing.T) {
-	// 未开启加签的机器人：不得凭空添加 timestamp/sign 参数。
+	// A bot without signing enabled: timestamp/sign parameters must not be added out of thin air.
 	const hook = "https://oapi.dingtalk.com/robot/send?access_token=tok"
 	got, err := dingTalkSignedURL(hook, "", time.UnixMilli(signTestTSMillis))
 	if err != nil {
@@ -84,7 +84,7 @@ func TestValidateHTTPURL(t *testing.T) {
 			t.Errorf("%q 应被接受: %v", s, err)
 		}
 	}
-	// file:// 之类不应放行——http.Client 对它们的处理超出预期范围。
+	// Schemes like file:// should not be allowed through — http.Client's handling of them goes beyond the expected scope.
 	bad := []string{"", "file:///etc/passwd", "ftp://example.com", "https://", "gopher://x"}
 	for _, s := range bad {
 		if err := validateHTTPURL(s); err == nil {

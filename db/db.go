@@ -1,5 +1,5 @@
-// Package db is the PostgreSQL data source for ARTEX (取代旧 graph 单文件 SQLite)。
-// 它打开连接、应用 schema、并 seed 内置 agent 与变量目录。
+// Package db is the PostgreSQL data source for ARTEX (replacing the old single-file SQLite graph).
+// It opens the connection, applies the schema, and seeds the built-in agents and variable catalog.
 package db
 
 import (
@@ -22,10 +22,10 @@ var schemaSQL string
 
 const schemaMigrationLockKey int64 = 7337741001
 
-// maxOpenConns 는 연결 풀 상한이다(`Open` 참조). PostgreSQL 기본 max_connections(100)
-// 보다 충분히 낮고, 애플리케이션 자신의 중첩 커넥션 깊이(기동기의 스키마 advisory lock 이
-// 커넥션 하나를 쥔 채 seedBuiltins 가 다른 커넥션을 잡는다)보다는 충분히 높아 자기 잠금에
-// 빠지지 않는다.
+// maxOpenConns is the upper bound of the connection pool (see `Open`). It is well below PostgreSQL's default max_connections (100)
+// and well above the application's own nested connection depth (the startup schema advisory lock holds
+// one connection while seedBuiltins grabs another), so it does not
+// deadlock on itself.
 const maxOpenConns = 32
 
 var schemaDeadlockRetryDelays = [...]time.Duration{
@@ -139,12 +139,12 @@ func Open(dsn string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// database/sql 은 기본적으로 커넥션 수를 제한하지 않아, 풀에 유휴 커넥션이 없으면 무조건
-	// 새로 열어 PostgreSQL 의 max_connections(기본 100)까지 밀어붙이고 나서야 거절당한다.
-	// 그러면 부하가 높을 때 쿼리는 "읽을 값이 없음"이 아니라 `FATAL: sorry, too many clients
-	// already` 라는 오류를 받고, 이 오류는 아래 인증 경로의 "읽기 실패"와 같은 모양이 된다.
-	// 상한을 두면 초과분은 유휴 커넥션을 기다려(오류 대신 느려짐), reset-password.sh·psql 을
-	// 위한 여유도 남는다. max_connections 를 낮춰 운영하면 이 값도 함께 낮춘다.
+	// By default database/sql does not limit the number of connections; when the pool has no idle connection it unconditionally
+	// opens a new one, pushing up to PostgreSQL's max_connections (default 100) and only then being rejected.
+	// Under high load a query then gets the error `FATAL: sorry, too many clients
+	// already` instead of "no value to read", and this error looks the same as the "read failure" in the auth path below.
+	// With a cap, the excess waits for an idle connection (slows down instead of erroring), and headroom is also left
+	// for reset-password.sh and psql. If you run with a lowered max_connections, lower this value too.
 	sqlDB.SetMaxOpenConns(maxOpenConns)
 	sqlDB.SetMaxIdleConns(maxOpenConns)
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
@@ -177,23 +177,23 @@ func Open(dsn string) (*DB, error) {
 type builtinAgent struct {
 	key, name, role, desc string
 	vars                  []promptVar
-	interactiveShell      bool // 建行时的默认交互式 shell 开关；ON CONFLICT 不覆盖用户后续手动开关
-	runSeconds            *int // 建行时的单次 run 墙钟上限(秒)；nil=用种子默认(1200)，0=不限时
+	interactiveShell      bool // default interactive-shell switch when the row is created; ON CONFLICT does not overwrite the user's later manual toggle
+	runSeconds            *int // per-run wall-clock cap (seconds) when the row is created; nil = seed default (1200), 0 = unlimited
 }
 
 type promptVar struct{ name, desc, example, source string }
 
-// intp 返回 v 的指针，用于给 builtinAgent 可选字段(如 runSeconds)显式取值。
+// intp returns a pointer to v, used to explicitly set optional builtinAgent fields (such as runSeconds).
 func intp(v int) *int { return &v }
 
-// builtinAgents mirrors docs §5(a). 内置工具不入库；这里只 seed agent + 变量目录。
-// 注：planner/worker/mainagent/auto 的交互式 shell 默认由下方 interactive_shell_default_v1
-// 块统一置 true（尊重后续 toggle）；这里的 interactiveShell 只给需要「建行即默认开」的新 agent。
+// builtinAgents mirrors docs §5(a). Built-in tools are not stored in the DB; only agents + the variable catalog are seeded here.
+// Note: the interactive-shell default of planner/worker/mainagent/auto is set uniformly to true by the interactive_shell_default_v1
+// block below (respecting later toggles); the interactiveShell here is only for new agents that need to be "on by default when the row is created".
 var builtinAgents = []builtinAgent{
 	{"goals", "目标拆解", "goals", "把渗透任务目标拆解成若干独立、可验证的子目标。", []promptVar{
 		{"EngagementDescription", "任务描述（测试对象/背景）", "测试 example.com 站点", "exploration"},
-		// Now 是全局 runtime 变量(见 server.globalPromptVars),不再在各 agent 目录里
-		// 重复定义,否则 withGlobalVars 追加时会与全局项撞名。
+		// Now is a global runtime variable (see server.globalPromptVars) and is no longer
+		// defined again in each agent catalog, otherwise withGlobalVars would collide with the global entry when appending.
 	}, false, nil},
 	{"planner", "规划", "planner", "读取态势、判定目标，只在确有未覆盖的新方向时补充探索意图（每任务一个规划循环）。", []promptVar{
 		{"Goal", "任务总目标", "拿下 example.com 的管理员权限", "exploration"},
@@ -208,9 +208,9 @@ var builtinAgents = []builtinAgent{
 		{"ProxyAddr", "记录代理地址(驱动 if 双文案)", "127.0.0.1:8080", "runtime"},
 		{"WorkerName", "worker 自我标识(可选)", "worker-1", "runtime"},
 	}, false, nil},
-	// Auto:内置「平台操作」agent。不参与渗透编排循环,经对话页驱动,用工具操作平台。
+	// Auto: the built-in "platform operations" agent. It does not take part in the pentest orchestration loop; it is driven via the chat page and uses tools to operate the platform.
 	{"auto", "Auto", "assistant", "平台操作助手：用工具管理任务(建/看/暂停/给提示)与资产，并可创建/修改 skill、自定义工具、MCP。", nil, false, nil},
-	// 渗透测试:内置「独立渗透」agent。经对话页驱动,一人从侦察到收尾走完整条渗透链,自己规划自己执行自己验证。默认开启交互式 shell。
+	// Pentest: the built-in "independent pentest" agent. Driven via the chat page, one agent walks the whole pentest chain from recon to wrap-up, planning, executing and verifying on its own. Interactive shell is on by default.
 	{"pentest", "渗透测试", "assistant", "独立渗透 agent：一人从侦察→找攻击面→深入利用→验证→收尾走完整条链，自己规划、自己执行、自己对抗式验证。", nil, true, intp(0)},
 }
 
@@ -239,8 +239,8 @@ ON CONFLICT (agent_id, var_name) DO UPDATE
 	}
 	// Drop catalog entries for variables that were renamed, so the white-list no
 	// longer advertises a name templates can't resolve (EngagementTitle→Description).
-	// 'Now' 从各 agent 目录提升为全局 runtime 变量后,旧库里 goals 仍残留一条 'Now'
-	// 会与全局项撞名(前端变量列表 key 重复);一并清掉。
+	// After 'Now' was promoted from per-agent catalogs to a global runtime variable, old databases still have a leftover 'Now' under goals,
+	// which would collide with the global entry (duplicate key in the frontend variable list); clear it together.
 	if _, err := d.Exec(`DELETE FROM agent_prompt_vars WHERE var_name IN ('EngagementTitle', 'CoverageGaps', 'Now')`); err != nil {
 		return fmt.Errorf("cleanup renamed vars: %w", err)
 	}
@@ -253,8 +253,8 @@ ON CONFLICT (agent_id, var_name) DO UPDATE
 		}
 		_ = d.SetSetting("interactive_shell_default_v1", "true")
 	}
-	// Seed the built-in browser (Playwright) MCP once — DISABLED by default (用户
-	// 需要时自行启用), no proxy by default. The traffic-capture toggle injects/strips
+	// Seed the built-in browser (Playwright) MCP once — DISABLED by default (the user
+	// enables it when needed), no proxy by default. The traffic-capture toggle injects/strips
 	// the recording proxy + CA at runtime (server.Manager.syncBrowserMCPProxy).
 	// Insert only if absent so we never clobber user edits (args/env/enabled/
 	// visibility) on restart.
@@ -363,7 +363,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 		priority int
 	}
 	rules := []rule{
-		// ── 系统破坏性命令 (priority 100) ──────────────────────────────────
+		// ── System-destructive commands (priority 100) ──────────────────────────────────
 		{
 			name:     "[Built-in] Recursive forced delete rm -rf",
 			target:   "tool_input",
@@ -445,7 +445,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			message:  "Flushing firewall rules (iptables -F / nft flush) is forbidden",
 			priority: 100,
 		},
-		// ── 数据库破坏性操作 (priority 90) ─────────────────────────────────
+		// ── Database-destructive operations (priority 90) ─────────────────────────────────
 		{
 			name:     "[Built-in] SQL DROP DATABASE / TABLE / SCHEMA",
 			target:   "tool_input",
@@ -482,11 +482,11 @@ func (d *DB) seedDefaultInterceptRules() error {
 			message:  "Redis FLUSHALL / FLUSHDB is forbidden; it can wipe all cached data",
 			priority: 90,
 		},
-		// ── HTTP 破坏性请求 (priority 80) ──────────────────────────────────
-		// Agent 发送 DELETE 请求的三种常见方式：
-		//   1. curl -X DELETE / --request DELETE（Bash 工具直接执行或写入脚本）
-		//   2. Python HTTP 客户端 .delete() 方法
-		//   3. JS/通用脚本里的 method: 'DELETE' / method="DELETE"
+		// ── HTTP-destructive requests (priority 80) ──────────────────────────────────
+		// Three common ways an Agent sends a DELETE request:
+		//   1. curl -X DELETE / --request DELETE (executed directly by the Bash tool or written into a script)
+		//   2. Python HTTP client .delete() method
+		//   3. method: 'DELETE' / method="DELETE" in JS/generic scripts
 		{
 			name:     "[Built-in] curl / wget HTTP DELETE request",
 			target:   "tool_input",

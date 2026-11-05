@@ -13,24 +13,24 @@ import (
 	"github.com/Autumn-27/artex/mcphttp"
 )
 
-// 자산 동기화(ScopeSentry 데이터 소스).
+// Asset sync (ScopeSentry data source).
 //
-// ScopeSentry 는 ASM 자산 측량 플랫폼으로, MCP 인터페이스를 통해 [프로젝트]/[작업] 두 차원으로
-// 서브도메인·웹 애플리케이션·서비스 등의 자산을 가져와 ARTEX 의 회사 + 자산 모델로 매핑한다.
-// 데이터 소스 자체는 "ScopeSentry" 라는 이름의 http 전송 MCP 행이다(url + X-API-Key 헤더를 mcp_servers 에 저장).
+// ScopeSentry is an ASM asset-measurement platform; through its MCP interface it pulls assets such as subdomains, web applications and services
+// along two dimensions, [project]/[task], and maps them to ARTEX's company + asset model.
+// The data source itself is an http-transport MCP row named "ScopeSentry" (url + X-API-Key header stored in mcp_servers).
 //
-// 에이전트 도구 계층과 달리, 여기서는 mcphttp.Client.Call 로 MCP 도구를 직접 호출해 원본 JSON 을 받고,
-// AskUser 권한 팝업을 띄우지 않는다(백그라운드 일괄 동기화).
+// Unlike the agent tool layer, here the MCP tools are called directly via mcphttp.Client.Call to get the raw JSON,
+// and no AskUser permission popup is raised (background bulk sync).
 
 const (
 	scopeSentryMCPName = "ScopeSentry"
-	syncMaxPerType     = 5000 // 단일 대상·단일 유형당 저장 보호 상한
+	syncMaxPerType     = 5000 // storage protection cap per single target and single type
 	syncDefaultPage    = 100
 )
 
-// 사용자 노출 메시지(writeErr 응답 + 동기화 결과 warnings/errors JSON). 식별자·enum·MCP 도구명·
-// JSON 필드명(dimension·targets 등)은 원문 그대로 두고, 중국어 문구만 한국어로 옮긴다(BRIEF F3 방침).
-// UI(web/messages/ko.json 의 sync 네임스페이스)와 "데이터 소스" 표기를 맞춘다.
+// User-facing messages (writeErr responses + the warnings/errors JSON of the sync result). Identifiers, enums, MCP tool names and
+// JSON field names (dimension, targets, etc.) are left verbatim; only the Chinese wording is moved to Korean (BRIEF F3 policy).
+// The "data source" wording is aligned with the UI (the sync namespace of web/messages/ko.json).
 const (
 	errSSDataSourceMissingFmt = "데이터 소스 %s 가 없습니다. 먼저 생성해 주세요"
 	errSSDataSourceNoURLFmt   = "데이터 소스 %s 에 URL 이 설정되지 않았습니다. 먼저 설정해 주세요"

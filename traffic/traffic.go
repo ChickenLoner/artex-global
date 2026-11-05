@@ -278,13 +278,13 @@ func (t *Traffic) initIndex() error {
 	}
 	t.incrementalVacuum = mode == autoVacuumIncremental
 	if !t.incrementalVacuum {
-		log.Printf("[traffic] 索引库未启用增量回收（auto_vacuum=%d）：删除流量不会缩小 index.sqlite，需要执行一次存储压缩来转换", mode)
+		log.Printf("[traffic] index store has incremental reclaim turned off (auto_vacuum=%d): deleting traffic will not shrink index.sqlite; run a storage compaction once to convert it", mode)
 	}
 	if _, err := conn.ExecContext(ctx, indexSchema); err != nil {
 		return err
 	}
 	if _, err := conn.ExecContext(ctx, ftsSchema); err != nil {
-		log.Printf("[traffic] 全文索引不可用，正文搜索将被禁用（元数据搜索不受影响）：%v", err)
+		log.Printf("[traffic] full-text index unavailable, body search will be disabled (metadata search is unaffected): %v", err)
 		return nil
 	}
 	t.fts = true
@@ -414,7 +414,7 @@ func (t *Traffic) maybePassthrough(f *mproxy.Flow, err error) {
 		return
 	}
 	if _, loaded := t.pass.LoadOrStore(host, struct{}{}); !loaded {
-		log.Printf("[traffic] 与 %s 的 MITM 出错，改为透传（该 host 后续直连目标、不再记录，但请求照常）：%v", host, err)
+		log.Printf("[traffic] MITM with %s broke down, switching to passthrough (this host will connect directly to the target from now on and will no longer be recorded, but requests proceed as usual): %v", host, err)
 	}
 }
 
@@ -1269,10 +1269,10 @@ func (t *Traffic) stageTreesForArchive(dirs, hosts []string, archiveID, taskID i
 		}
 		planned = append(planned, stagedTrafficPath{source: source})
 	}
-	// 归档路径即使一个历史 host 目录都没有(新装机的流量只落在 SQLite + _blobs)
-	// 也必须留下 journal：崩溃点若落在 PostgreSQL 提交与 SQLite 提交之间，重启后
-	// SQLite 事务被回滚，只有这份 journal 能让恢复流程补做 host 行的删除。少了它，
-	// 已转冷任务的独占流量会永久留在热库里。
+	// Even if the archive path has no historical host directory at all (traffic from a fresh install lands only in SQLite + _blobs),
+	// a journal must still be left: if the crash point falls between the PostgreSQL commit and the SQLite commit, after restart the
+	// SQLite transaction is rolled back, and only this journal lets the recovery process redo the deletion of the host rows. Without it,
+	// the exclusive traffic of tasks already moved to cold storage would stay in the hot DB forever.
 	uniqueHosts := uniqueArchiveHosts(hosts)
 	if len(planned) == 0 && len(uniqueHosts) == 0 {
 		return "", nil, nil
@@ -1735,11 +1735,11 @@ func (t *Traffic) reclaim() {
 				return // shutdown must not wait out the remaining budget
 			}
 			if step+1 >= reclaimMaxSteps {
-				log.Printf("[traffic] 索引空间回收未做完（已用满 %d 步上限），下次删除时继续", reclaimMaxSteps)
+				log.Printf("[traffic] index space reclaim incomplete (hit the %d-step limit), will continue on the next deletion", reclaimMaxSteps)
 				return
 			}
 			if time.Now().After(deadline) {
-				log.Printf("[traffic] 索引空间回收未做完（已用满 %s 预算），下次删除时继续", reclaimBudget)
+				log.Printf("[traffic] index space reclaim incomplete (used up the %s budget), will continue on the next deletion", reclaimBudget)
 				return
 			}
 		}
@@ -2037,7 +2037,7 @@ func (t *Traffic) Tools() []actool.CoreTool {
 			if len(rows) == 0 {
 				return actool.Text("No matching traffic."), nil
 			}
-			// 精简为最小索引：仅保留定位所需字段 + 响应码/长度，不带任何响应内容。
+			// slimmed down to a minimal index: keep only the fields needed for locating plus response code/length, with no response content at all.
 			type liteRow struct {
 				ID      string `json:"id"`
 				Method  string `json:"method"`
