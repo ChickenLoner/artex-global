@@ -10,12 +10,12 @@ import (
 	"github.com/Autumn-27/artex/db"
 )
 
-// 이 테스트는 상류 ARTEX(0.3.15 계열)에 있던
-// GET /api/intercept/judge/usage 를 이 포크로 되가져오면서 함께 추가한 것이다.
-// 폴백 판정(judge) 이 소비한 토큰 누계와 일자별 계열이 실제 DB 에서 정확히
-// 집계되는지, 그리고 DB 가 없을 때도 500 이 아니라 빈 계열로 응답하는지 본다.
+// This test was added together with bringing GET /api/intercept/judge/usage, which existed in upstream ARTEX (0.3.15 line),
+// back into this fork.
+// It checks that the cumulative token total consumed by fallback judgments (judge) and the per-day series are aggregated accurately in a real DB,
+// and that when there is no DB it responds with an empty series rather than 500.
 //
-// DB 설정이 없으면 다른 통합 테스트처럼 건너뛴다(server/testmain_test.go 참고).
+// Like the other integration tests, it is skipped when no DB config is present (see server/testmain_test.go).
 //
 // These tests cover the endpoint restored from upstream ARTEX: judge token totals
 // and the per-day series, plus the no-database graceful path.
@@ -33,8 +33,8 @@ func judgeUsageRig(t *testing.T) (*Server, *db.DB) {
 		t.Skipf("postgres unavailable (%v) — skipping", err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	// llm_usage 는 schema.sql 이 아니라 Go 쪽 EnsureLLMUsageTable() 이 만든다.
-	// db 패키지의 기존 테스트(finding_traffic_archive_test.go 등)와 같은 방식으로 맞춘다.
+	// llm_usage is created not by schema.sql but by the Go-side EnsureLLMUsageTable().
+	// Set it up the same way as the existing tests in the db package (finding_traffic_archive_test.go, etc.).
 	if err := d.EnsureLLMUsageTable(); err != nil {
 		t.Fatalf("EnsureLLMUsageTable 실패: %v", err)
 	}
@@ -73,8 +73,8 @@ VALUES ($1,$2,'fixture',$3,$4,$5,$6,'ok', now() - ($7 * interval '1 day'))`,
 	}
 }
 
-// TestInterceptJudgeUsageAggregates: 누계는 worker='judge' 행만 세고, 일자 계열에
-// 오늘 버킷이 생기며, judge 가 아닌 행은 어떤 값에도 영향을 주지 않아야 한다.
+// TestInterceptJudgeUsageAggregates: the cumulative total counts only worker='judge' rows, today's bucket appears
+// in the per-day series, and non-judge rows must not affect any value.
 func TestInterceptJudgeUsageAggregates(t *testing.T) {
 	s, d := judgeUsageRig(t)
 
@@ -85,7 +85,7 @@ func TestInterceptJudgeUsageAggregates(t *testing.T) {
 
 	insertUsage(t, d, "judge", 100, 20, 7, 3, 0)
 	insertUsage(t, d, "judge", 50, 10, 0, 0, 0)
-	insertUsage(t, d, "worker", 999, 999, 999, 999, 0) // 집계에서 제외되어야 함
+	insertUsage(t, d, "worker", 999, 999, 999, 999, 0) // must be excluded from the aggregation
 
 	code, got := callJudgeUsage(t, s, "")
 	if code != http.StatusOK {
@@ -125,12 +125,12 @@ func TestInterceptJudgeUsageAggregates(t *testing.T) {
 	}
 }
 
-// TestInterceptJudgeUsageDaysWindow: days 는 일자 계열만 좁히고 누계는 전체 기간이다.
+// TestInterceptJudgeUsageDaysWindow: days narrows only the per-day series; the cumulative total covers the whole period.
 func TestInterceptJudgeUsageDaysWindow(t *testing.T) {
 	s, d := judgeUsageRig(t)
 
-	insertUsage(t, d, "judge", 11, 1, 0, 0, 3) // 창 밖(3일 전)
-	insertUsage(t, d, "judge", 22, 2, 0, 0, 0) // 창 안
+	insertUsage(t, d, "judge", 11, 1, 0, 0, 3) // outside the window (3 days ago)
+	insertUsage(t, d, "judge", 22, 2, 0, 0, 0) // inside the window
 
 	_, recent := callJudgeUsage(t, s, "?days=1")
 	cutoff := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
@@ -143,14 +143,14 @@ func TestInterceptJudgeUsageDaysWindow(t *testing.T) {
 		t.Errorf("누계 calls=%d want >=2 (창과 무관하게 전체 기간을 세야 함)", recent.Calls)
 	}
 
-	_, all := callJudgeUsage(t, s, "?days=0") // 0 = 기본 30일로 보정
+	_, all := callJudgeUsage(t, s, "?days=0") // 0 = corrected to the default 30 days
 	if len(all.Daily) > 31 {
 		t.Errorf("days=0 보정 후 버킷 수가 비정상적으로 많음: %d", len(all.Daily))
 	}
 }
 
-// TestInterceptJudgeUsageWithoutDatabase: DB 미연결이어도 설정 화면이 깨지지 않도록
-// 200 + 빈 계열로 응답한다(판정 자체가 꺼져 있는 상태).
+// TestInterceptJudgeUsageWithoutDatabase: even with no DB connected, so the settings screen does not break,
+// it responds with 200 + an empty series (the state where judgment itself is turned off).
 func TestInterceptJudgeUsageWithoutDatabase(t *testing.T) {
 	s := &Server{m: &Manager{}}
 
