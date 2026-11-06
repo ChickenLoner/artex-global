@@ -3,6 +3,8 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,6 +30,7 @@ const (
 	errChatUploadParse        = "업로드를 해석하지 못했거나 크기 제한을 초과했습니다: "
 	errChatUploadNoFile       = "업로드할 파일이 없습니다(폼 필드 file)"
 	errChatUploadSaveFailed   = "저장하지 못했습니다: "
+	errChatUploadOutside      = "업로드 위치가 작업 공간 밖입니다"
 )
 
 // safeChatID guards the {id} path segment against traversal — task ids are numeric,
@@ -90,8 +93,19 @@ func (s *Server) chatUpload(w http.ResponseWriter, r *http.Request) {
 		defer s.engine.decInflight(id)
 	}
 	dir := filepath.Join(s.m.dir, sub, id, "uploads")
+	// The chat working dir is also the agent's CWD, so the agent (or anything it ran) can plant a symlink at
+	// <sub>/<id> or <sub>/<id>/uploads. Resolve symlinks and refuse any target outside the workspace, both before
+	// creating directories (MkdirAll would otherwise create them through the link) and again afterwards.
+	if !s.wsInsideRoot(dir) {
+		writeErr(w, 400, errChatUploadOutside)
+		return
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		writeErr(w, 500, errChatUploadMkdir+err.Error())
+		return
+	}
+	if !s.wsInsideRoot(dir) {
+		writeErr(w, 400, errChatUploadOutside)
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxChatUpload)
@@ -111,7 +125,11 @@ func (s *Server) chatUpload(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		dest := uniqueUploadPath(dir, name)
-		if err := saveUpload(hdr, dest); err != nil {
+		if err := s.saveChatUpload(hdr, dest); err != nil {
+			if err == errUploadOutside {
+				writeErr(w, 400, errChatUploadOutside)
+				return
+			}
 			writeErr(w, 500, errChatUploadSaveFailed+err.Error())
 			return
 		}
@@ -123,19 +141,52 @@ func (s *Server) chatUpload(w http.ResponseWriter, r *http.Request) {
 
 // uniqueUploadPath returns dir/name, or dir/name-1, dir/name-2… when it already exists,
 // so re-uploading the same filename never clobbers a prior attachment.
+//
+// It uses Lstat, not Stat: a symlink (including a dangling one) already occupies the name, and Stat would follow it
+// and report a missing target as "free", sending the write through the link.
 func uniqueUploadPath(dir, name string) string {
 	dest := filepath.Join(dir, name)
-	if _, err := os.Stat(dest); os.IsNotExist(err) {
+	if _, err := os.Lstat(dest); os.IsNotExist(err) {
 		return dest
 	}
 	ext := filepath.Ext(name)
 	stem := strings.TrimSuffix(name, ext)
 	for i := 1; ; i++ {
 		cand := filepath.Join(dir, fmt.Sprintf("%s-%d%s", stem, i, ext))
-		if _, err := os.Stat(cand); os.IsNotExist(err) {
+		if _, err := os.Lstat(cand); os.IsNotExist(err) {
 			return cand
 		}
 	}
+}
+
+// errUploadOutside reports that a created upload resolved outside the workspace root.
+var errUploadOutside = fmt.Errorf("upload resolved outside the workspace")
+
+// saveChatUpload writes one uploaded file to dest without ever following a symlink at the final path component:
+// O_EXCL makes OpenFile fail if anything (a file, or a symlink even if dangling) already exists there, so the
+// upload can neither overwrite an existing file nor be redirected through a planted link. After creating the file
+// it re-checks that the path still resolves inside the workspace (the parent directory could have been swapped for
+// a symlink after the check in chatUpload); if not, the just-created empty file is removed and nothing is written.
+func (s *Server) saveChatUpload(hdr *multipart.FileHeader, dest string) error {
+	src, err := hdr.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	if !s.wsInsideRoot(dest) {
+		out.Close()
+		_ = os.Remove(dest)
+		return errUploadOutside
+	}
+	if _, err := io.Copy(out, src); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
 }
 
 // composeAgentMessage appends an attachment manifest to the user's message so the agent
