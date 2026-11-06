@@ -12,12 +12,12 @@ import (
 
 const FindingRetestAgentKey = "retester"
 
-// 재검증(finding_retest) 종결 사유. finding_retests.error 컬럼에 저장돼 재검증 패널
-// (finding-retest-panel) 의 item.error 로 노출된다(사용자 노출, server/conversations.go 의
-// 형제 사유 convRetest* 와 같은 컬럼·패널이라 함께 한국어로 둔다 — F9). retestNoConclusionReason
-// 은 에이전트가 결론 없이 완료했을 때 caller 가 넘긴 사유를 덮어쓰는 폴백이고,
-// retestServiceRestartReason 은 재시작 복구(RecoverFindingRetests)가 미완 재검증을 봉인할 때 쓴다.
-// 작은따옴표 없는 상수라 SQL 리터럴 자리에 그대로 이어 붙여도 안전하다.
+// Reasons for ending a re-verification (finding_retest). Stored in the finding_retests.error column and exposed as the re-verification panel's
+// (finding-retest-panel) item.error (user-visible; it is the same column and panel as the sibling reasons convRetest* in
+// server/conversations.go, so it is kept in Korean together with them - F9). retestNoConclusionReason
+// is the fallback that overrides the reason passed in by the caller when the agent completed without a conclusion,
+// and retestServiceRestartReason is used when restart recovery (RecoverFindingRetests) seals an unfinished re-verification.
+// They are constants without single quotes, so they are safe to concatenate directly into a SQL literal position.
 const (
 	retestNoConclusionReason   = "에이전트가 재검증 결론을 저장하지 않았습니다. 대화를 확인한 뒤 다시 재검증해 주세요"
 	retestServiceRestartReason = "서비스가 재시작되어 재검증이 중단되었습니다. 다시 시작해 주세요"
@@ -171,8 +171,8 @@ func (d *DB) FindingRetestForConversation(ctx context.Context, conversationID in
 // FailPendingRetestForConversation seals a conversation's unfinished retest when
 // the runner could not even load it — the retest ID is unknown on that path, so
 // the conversation ID is the only handle. Without it a transient read error
-// leaves the row 'pending' forever: the findings list keeps showing 复测中 and
-// every later 发起复测 is deduped against a run that is not happening, with only
+// leaves the row 'pending' forever: the findings list keeps showing "Retesting" and
+// every later "Start retest" is deduped against a run that is not happening, with only
 // a process restart (RecoverFindingRetests) able to clear it.
 func (d *DB) FailPendingRetestForConversation(conversationID int64, reason string) error {
 	_, err := d.Exec(`UPDATE finding_retests SET status='failed', error=$2, finished_at=now()
@@ -248,15 +248,15 @@ func (d *DB) FinishFindingRetest(id int64, status, reason string) error {
 		return err
 	}
 	if finalStatus == "completed" && verdict == "fixed" {
-		// 走带通知的版本，与人工在详情页改状态共用同一套语义。
+		// Use the notifying version, sharing the same semantics as a human changing the status on the detail page.
 		//
-		// 此前这里是裸的 UPDATE：复测判「已修复」时状态确实变了，但配了
-		// on_status_change 的渠道完全收不到推送——状态在界面上悄悄变了，
-		// 运维要打开平台才知道。状态更新与推送事件必须一起落库，
-		// SetFindingStatusTx 内部处理了「状态没变就不登记」等细节。
-		// 用 context.Background()：本函数整条都是无 ctx 的旧风格（d.Begin()/
-		// tx.QueryRow/tx.Exec），没有可传递的取消信号，硬加一个 ctx 参数会
-		// 牵动 server 侧调用点与多处测试，超出本次改动的范围。
+		// Previously this was a bare UPDATE: when the retest judged "fixed" the status did change, but channels configured with
+		// on_status_change received no push at all - the status quietly changed in the UI and
+		// ops had to open the platform to find out. The status update and the push event must be persisted together;
+		// SetFindingStatusTx handles details such as "do not register if the status did not change" internally.
+		// context.Background() is used: this whole function is in the old no-ctx style (d.Begin()/
+		// tx.QueryRow/tx.Exec) with no cancellation signal to pass along, and forcing a ctx parameter in would
+		// ripple into server-side call sites and many tests, beyond the scope of this change.
 		if _, _, _, _, err := SetFindingStatusTx(context.Background(), tx, findingID, FindingFixed); err != nil {
 			return err
 		}

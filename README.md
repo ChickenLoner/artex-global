@@ -20,7 +20,7 @@ English · [한국어](README.ko.md) · [中文](README.zh.md) · [Español](REA
 >
 > ARTEX is an autonomous offensive tool powerful enough to carry an attack from reconnaissance through intrusion to data exfiltration with little human involvement, so the harm from misuse is correspondingly large. In October 2026, several Korean news outlets reported that investigators had found indications the upstream ARTEX was used in personal-data breaches targeting Korean financial institutions; the related investigation is ongoing. This global edition is not published to help attackers. Its purpose is to help defenders understand how such autonomous AI attacks work and build the capability to detect and block them.
 >
-> - **Unauthorized use is a crime in itself.** Do not run any scanning, probing, or exploitation against systems you do not own or for which you lack explicit written authorization. In the Republic of Korea, unauthorized intrusion into an information and communications network violates the Network Act, and the Personal Information Protection Act also applies where personal data is involved.
+> - **Unauthorized use is a crime in itself.** Do not run any scanning, probing, or exploitation against systems you do not own or for which you lack explicit written authorization. In Thailand, unauthorized access to a computer system is an offense under the Computer Crime Act, and the Personal Data Protection Act also applies where personal data is involved.
 > - **Do not target live services or other parties' assets.** Verify only in learning, research, and locally isolated environments you own (deliberately vulnerable targets such as OWASP Juice Shop or DVWA).
 > - **Read it from a defender's point of view.** This repository also compiles defensive and detection material, such as detection signatures and hardening checklists, for autonomous AI attacks. → **[Defense & Detection Guide](docs/defense-en.md)** (also in [Korean](docs/defense-ko.md))
 >
@@ -40,8 +40,8 @@ ARTEX is a system in which several LLM-driven agents autonomously run a penetrat
 
 ARTEX may be used **only against targets you own or for which you have explicit written authorization.** Any scanning, probing, or exploitation beyond the authorized scope may itself be illegal.
 
-- In the Republic of Korea, intruding into or disrupting another party's information and communications network without authorization violates the **Act on Promotion of Information and Communications Network Utilization and Information Protection** (정보통신망법).
-- Personal data collected or exposed during a penetration test is subject to the Korean **Personal Information Protection Act** (개인정보보호법). Even with authorization, handle the access, retention, and deletion of personal data with care.
+- In Thailand, accessing or disrupting another party's computer system without authorization is an offense under the **Computer Crime Act B.E. 2550 (2007)** (as amended).
+- Personal data collected or exposed during a penetration test is subject to Thailand's **Personal Data Protection Act B.E. 2562 (2019)**. Even with authorization, handle the access, retention, and deletion of personal data with care.
 - Wherever you are, comply with your own jurisdiction's laws on network security, data protection, and computer crime.
 - Use this for **learning, research, and verification in locally isolated environments.** Before targeting any live external system, secure written authorization and an agreed scope and time window.
 
@@ -55,7 +55,7 @@ Upstream ARTEX has its prompts, UI, and documentation entirely in Chinese, which
 
 - **Localize the output** — the findings, fact summaries, final reports, and chat replies that agents surface to a human are forced into the selected language (English by default; Korean, Chinese, Spanish, Japanese, and Thai selectable). Commands, payloads, code, URLs, and raw logs are needed for analysis and are left in their original form.
 - **Preserve performance** — the internal reasoning prompts (the behavioral instruction body) that drive the agents' judgment are **not** translated. Behavior benchmarked in the original language is kept intact, and only the output language is changed, avoiding the quality drift that translation introduces.
-- **State the legal boundaries** — the "authorized scope only" warning is stated clearly, together with Korea-specific notices on network and privacy law (the maintainers are based in Korea); the law of wherever you operate applies as well.
+- **State the legal boundaries** — the "authorized scope only" warning is stated clearly, together with notices on Thailand's computer-crime and data-protection law; the law of wherever you operate applies as well.
 - **Support diverse LLM stacks** — the LLM provider can be swapped from a frontier model to any OpenAI-compatible endpoint (domestic or open models). See [Configuration](#configuration).
 
 > The boundaries and design policy of this multilingual edition are documented in more detail in the repository's working notes. To make it easy to diff against the upstream repository, the original Chinese document is preserved as [`README.zh.md`](README.zh.md).
@@ -349,7 +349,7 @@ This repository aims to help the **defending side** understand how autonomous AI
   - The fingerprints a defender can observe (IoCs and behavioral signatures) — separated into the target view and the forensic view
   - The entry points attackers target and the corresponding hardening (auxiliary authentication, IDOR, credential stuffing, sessions and secrets)
   - WAF/SIEM/authentication-log detection rules (pseudo-rules), a hardening checklist, and an incident-response summary
-  - Korean official channels for indicators of compromise and advisories (KISA, FSI, PIPC) and the reporting duties under Korean law
+  - Thai official channels for indicators of compromise and advisories (ThaiCERT, NCSA, PDPC) and the reporting duties under Thai law
 - **[Deployable detection rules (detections/)](detections/)** — the guide's fingerprint detections shipped as ready-to-use rules: the host/log/SIEM layer as [Sigma](https://sigmahq.io) rules (atomic + correlation; use `sigma convert` for Splunk, Elasticsearch, and others), and the network layer as [Suricata](https://suricata.io) rules targeting the enrich prober and norma SDK WebFetch User-Agents.
   - **[ATT&CK coverage layer (detections/attack/)](detections/attack/)**: a [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) layer (JSON) that maps the rules above to the techniques they tag, so you can see at a glance which attack behavior each rule catches. Every technique comes only from a rule's `attack.*` tags, with nothing added by guesswork.
   - **[Machine-readable indicator list (detections/indicators/)](detections/indicators/)**: the unique fingerprints ARTEX itself emits, gathered into a single CSV (`artex_indicators.csv`) and shipped as a ready-to-import MISP event (`artex_indicators.misp.json`) as well, so you can drop them straight into a SIEM lookup table or a threat-intelligence platform (MISP, or anything that ingests the MISP format) as indicators of compromise (IoCs). Every value is a string verified in the repository source, and each row carries its source file and detection rule.
@@ -394,7 +394,7 @@ Anyone is free to use, modify, and distribute it, but **derivative works must al
 - Use this tool to **read and study the source code**, and to **verify its technical principles in a locally isolated environment.**
 - Unless the target is one you own or for which you have **explicit written authorization**, do not scan, probe, exploit, or attack any website, online service, or connected system.
 - Using it for illegal intrusion, data theft, denial of service (DoS), or any other destructive or criminal activity is strictly prohibited.
-- You must comply with all laws on network security, data protection, and computer crime in your country and region (in Korea, the 정보통신망법, 개인정보보호법, and others).
+- You must comply with all laws on network security, data protection, and computer crime in your country and region (in Thailand, the Computer Crime Act B.E. 2550, the Personal Data Protection Act B.E. 2562, and others).
 
 ### Disclaimer
 

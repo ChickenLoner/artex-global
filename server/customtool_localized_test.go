@@ -9,17 +9,17 @@ import (
 	"github.com/Autumn-27/artex/db"
 )
 
-// customtool.go 의 사용자 지정 도구 CRUD·시험 실행 엔드포인트가 writeErr 로 돌려주는
-// 검증 오류 응답을 한국어로 유지하는 회귀 방어 테스트다. 한국어 판정은 F3a 의
-// assertKoreanError(한글 포함·중국어 한자 0), 응답 본문 추출은 task_categories 테스트의
-// decodeErrorField 를 재사용한다(같은 package server). 에이전트가 읽는 actool.Errorf 도구
-// 결과와 도구 스키마 description 은 두뇌 경계라 번역 대상이 아니며 이 테스트도 건드리지 않는다.
+// A regression-guard test that keeps the validation error responses that the custom-tool CRUD and trial-run endpoints in customtool.go return via writeErr
+// in Korean. The Korean check reuses assertKoreanError from F3a
+// (contains Hangul, zero Chinese Han characters), and response-body extraction reuses decodeErrorField from the task_categories test
+// (same package server). The actool.Errorf tool results that the agent reads
+// and the tool-schema descriptions are on the brain boundary and are not translated; this test does not touch them either.
 
-// TestCustomToolErrorConstantsLocalized 는 writeErr 로 노출되는 상수 8종이 전부 한국어임을
-// 단언한다. 이 중 둘(errCustomToolKeyExists·errCustomToolEditCustomOnly)은 핸들러가 먼저
-// pg.GetTool(DB)을 거쳐야 도달하므로 아래 실제 HTTP 테스트로는 닿지 않는다. 상수 단언으로
-// 핀 고정하고, "어느 분기에서 이 상수가 쓰이는지"는 코드 경로 추적으로 확인했다
-// (goals_api·task_control 의 DB 경로 검증 밀도와 동일).
+// TestCustomToolErrorConstantsLocalized asserts that all 8 constants exposed via writeErr are Korean.
+// Two of them (errCustomToolKeyExists, errCustomToolEditCustomOnly) are reached only after the handler goes through
+// pg.GetTool (DB), so the real HTTP test below cannot reach them. They are pinned by the constant assertion,
+// and "which branch uses this constant" was confirmed by tracing the code paths
+// (same level of DB-path verification density as goals_api and task_control).
 func TestCustomToolErrorConstantsLocalized(t *testing.T) {
 	for _, c := range []struct{ name, msg string }{
 		{"keyFormat", errCustomToolKeyFormat},
@@ -35,17 +35,17 @@ func TestCustomToolErrorConstantsLocalized(t *testing.T) {
 	}
 }
 
-// newCustomToolServer 는 pg 게이트(s.pg)를 통과시키되 실제 DB 연결은 없는 Server 를 만든다.
-// &db.DB{} 는 임베드된 *sql.DB 가 nil 이지만 포인터 자체는 non-nil 이라 pg() 가 503 을 쓰지
-// 않고 그대로 반환한다. 아래 검증 분기들은 전부 pg.GetTool 같은 실제 DB 호출 "이전"에
-// 반환하므로 nil DB 를 역참조하지 않는다(코드 경로로 확인).
+// newCustomToolServer builds a Server that passes the pg gate (s.pg) but has no real DB connection.
+// In &db.DB{} the embedded *sql.DB is nil but the pointer itself is non-nil, so pg() does not write a 503 and
+// returns it as is. The validation branches below all return "before" a real DB call such as pg.GetTool,
+// so the nil DB is never dereferenced (confirmed via the code paths).
 func newCustomToolServer() *Server {
 	return &Server{m: &Manager{pg: &db.DB{}}}
 }
 
-// TestCustomToolCreateValidationLocalized 는 pgCreateCustomTool 의 입력 검증 3경로를
-// 실제 HTTP 로 돌려 응답 본문이 한국어임을 확인한다. 세 경로 모두 pg.GetTool(68행) 전에
-// 반환한다.
+// TestCustomToolCreateValidationLocalized runs the 3 input-validation paths of pgCreateCustomTool
+// over real HTTP and confirms the response bodies are Korean. All three paths return before
+// pg.GetTool (line 68).
 func TestCustomToolCreateValidationLocalized(t *testing.T) {
 	cases := []struct {
 		name, body, want string
@@ -72,8 +72,8 @@ func TestCustomToolCreateValidationLocalized(t *testing.T) {
 	}
 }
 
-// TestCustomToolTestRunValidationLocalized 는 pgTestCustomTool 의 입력 검증 3경로를
-// 실제 HTTP 로 돌려 응답 본문이 한국어임을 확인한다. 셋 다 DB 호출이 없다.
+// TestCustomToolTestRunValidationLocalized runs the 3 input-validation paths of pgTestCustomTool
+// over real HTTP and confirms the response bodies are Korean. None of the three makes a DB call.
 func TestCustomToolTestRunValidationLocalized(t *testing.T) {
 	cases := []struct {
 		name, body, want string
@@ -95,7 +95,7 @@ func TestCustomToolTestRunValidationLocalized(t *testing.T) {
 			if got != c.want {
 				t.Fatalf("응답 본문 불일치: got %q want %q", got, c.want)
 			}
-			// unknown-kind 는 뒤에 req.Kind("bogus") 라틴 꼬리표가 붙으므로 한자 0 만 확인한다.
+			// unknown-kind is followed by the Latin tag req.Kind("bogus"), so only zero Han characters is checked.
 			assertKoreanError(t, "customtool.test."+c.name, errCustomToolUnknownKindPrefix)
 		})
 	}

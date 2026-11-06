@@ -7,28 +7,28 @@ import (
 	"fmt"
 )
 
-// weComMarkdownLimit 是企微群机器人 markdown content 的硬上限（字节，非字符）。
-// 这是全部六个渠道里最紧的限制，也是 TruncateBytes 存在的主要原因。
+// weComMarkdownLimit is the hard limit of the WeCom group bot's markdown content (bytes, not characters).
+// This is the tightest limit among all six channels and the main reason TruncateBytes exists.
 const weComMarkdownLimit = 4096
 
-// weComChannel 实现企业微信群机器人。
+// weComChannel implements the WeCom (Enterprise WeChat) group bot.
 //
-// 平台特性：
-//   - 唯一通过 URL 上的 key 鉴权，不支持加签——所以 webhook 地址本身就是全部凭据。
-//   - markdown content 上限 4096 **字节**，超长整条被拒（不是截断）。中文 3 字节/字，
-//     意味着正文只有一千多字可写，必须客户端截断。
-//   - 限流 20 条/分钟，同样靠客户端限流兜住。
+// Platform characteristics:
+//   - Authenticated solely by the key in the URL; request signing is not supported — so the webhook address itself is the entire credential.
+//   - markdown content is capped at 4096 **bytes**, and an over-long message is rejected whole (not truncated). Chinese takes 3 bytes per character,
+//     which means only a bit over a thousand characters can be written in the body, so the client must truncate.
+//   - Rate limit of 20 messages/minute, likewise held in check by client-side rate limiting.
 type weComChannel struct{}
 
 func (weComChannel) Kind() string { return KindWeCom }
 
 func (weComChannel) DefaultRatePerMin() int { return 20 }
 
-// 企业微信只有 Webhook 一处凭据（URL 上的 key），且它不支持加签——
-// 整个地址就是全部凭据，没有别的字段需要掩码。
+// WeCom has only one credential, the Webhook (the key in the URL), and it does not support signing —
+// the whole address is the entire credential, and there are no other fields that need masking.
 func (weComChannel) SecretKeys() []string { return []string{"webhook"} }
 
-// 企微只有 Webhook 一处字段，它既是目的地也是凭据，因此没有「改地址后残留的凭据」可言。
+// WeCom has only one field, the Webhook, which is both the destination and the credential, so there is no "credential left over after changing the address".
 func (weComChannel) DestinationKeys() []string { return []string{"webhook"} }
 
 func (weComChannel) Validate(cfg map[string]any) error {
@@ -46,8 +46,8 @@ func (c weComChannel) Send(ctx context.Context, cfg map[string]any, m Message) (
 	if err := c.Validate(cfg); err != nil {
 		return 0, Permanent(err)
 	}
-	// 汇总批可能很长（50 条 × 每条一行 + 前缀），4096 字节很容易超。
-	// 截断在这里做而不是靠平台报错：被拒意味着这一批全丢，而截断至少送达前若干条。
+	// A digest batch can be very long (50 items × one line each + a prefix), so 4096 bytes is easily exceeded.
+	// Truncation is done here rather than relying on a platform error: being rejected means the whole batch is lost, whereas truncation at least delivers the first several items.
 	content, kept := markdownBody(m, weComMarkdownLimit)
 	payload := map[string]any{
 		"msgtype":  "markdown",
@@ -65,13 +65,13 @@ func (c weComChannel) Send(ctx context.Context, cfg map[string]any, m Message) (
 		return 0, fmt.Errorf("WeCom 응답을 해석하지 못했습니다: %w (%s)", err, snippet(raw))
 	}
 	if res.ErrCode != 0 {
-		// 45009 是接口调用超过限制——平台的限流窗口会滚动，退避后重试是有效的，
-		// 所以显式归为可重试。走到这里说明客户端 rate_per_min 配得过于激进，
-		// 重试只是兜底，真正的修法是调低该渠道的限流值。
+		// 45009 means the API call limit was exceeded — the platform's rate-limit window rolls, so retrying after backoff is effective,
+		// hence it is explicitly classified as retryable. Reaching here means the client's rate_per_min is configured too aggressively;
+		// retrying is only a backstop, and the real fix is to lower that channel's rate limit value.
 		if res.ErrCode == 45009 {
 			return 0, fmt.Errorf("WeCom 요청이 제한되었습니다 (%d): %s", res.ErrCode, res.ErrMsg)
 		}
-		// 93000 是 webhook key 无效——永久失败，重试不会自愈。
+		// 93000 means the webhook key is invalid — a permanent failure that retrying will not heal.
 		return 0, Permanent(fmt.Errorf("WeCom에서 오류가 발생했습니다 (%d): %s", res.ErrCode, res.ErrMsg))
 	}
 	return kept, nil

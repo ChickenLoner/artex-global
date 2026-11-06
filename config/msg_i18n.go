@@ -1,10 +1,10 @@
 package config
 
-// 기동 단계(DB 연결 이전)의 운영자 대면 메시지 번역. 이 시점에는 settings 테이블을 읽을 수
-// 없으므로 런타임 설정(ActiveLanguage)이 아니라 구성된 기본 언어(Language(): ARTEX_LANG >
-// 설정 파일 > en)를 기준으로 치환한다. 조치에 필요한 식별자(ARTEX_PG_DSN·database·dsn·
-// host/user/dbname 등)는 번역하지 않고 원문을 그대로 둔다. "ko" 는 키 자체이므로 저장하지
-// 않고, 조회 실패·ko 일 때는 원문을 돌려준다.
+// Translation of operator-facing messages in the startup phase (before the DB connection). At this point the settings table cannot be
+// read, so substitution is based on the configured default language (Language(): ARTEX_LANG >
+// config file > en) rather than the runtime setting (ActiveLanguage). Identifiers needed for remediation (ARTEX_PG_DSN, database, dsn,
+// host/user/dbname, etc.) are not translated and are left verbatim. "ko" is the key itself, so it is not stored;
+// on lookup failure or when the language is ko, the original text is returned.
 var cfgCatalog = map[string]map[string]string{
 	"환경 변수 ARTEX_PG_DSN": {
 		"en": "environment variable ARTEX_PG_DSN",

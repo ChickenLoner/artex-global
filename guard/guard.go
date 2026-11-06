@@ -101,7 +101,7 @@ func (g *Guard) applyIntercept(ctx context.Context, ev hook.Event) hook.Result {
 	}
 	switch dec.Action {
 	case "deny":
-		// 观测:deny 命中不阻塞审批,直接记一条 denied（历史/任务拦截页可见）。
+		// Observation: a deny hit does not block approval; it just records a denied entry (visible in the history / task-intercept page).
 		g.interceptor.Log(ctx, intercept.ConvIDFromContext(ctx), dec, ev.ToolName, ev.Input, "denied")
 		return g.block(ev.ToolName, systemBlockMessage(dec.Message), "")
 	case "allow":
@@ -147,7 +147,7 @@ const (
 // Audit/history rows keep the raw reason (see Interceptor.Log); only the
 // model-facing tool_result carries this framing.
 func systemBlockMessage(reason string) string {
-	// "[模型]" is an internal sentinel the DB and UI use to classify model-judged
+	// The Chinese "[model]" tag is an internal sentinel the DB and UI use to classify model-judged
 	// decisions; it must not leak into the text the model and the chat display.
 	reason = strings.TrimSpace(strings.TrimPrefix(reason, "[模型]"))
 	return BlockMarker + " This call was blocked by the platform. " +

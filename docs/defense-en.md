@@ -84,7 +84,7 @@ An autonomous agent targets the **same weaknesses** a human attacker does, but r
 The first and most reliable entry point an autonomous agent targets is not a clever zero-day but a **known, already-disclosed vulnerability left exposed and unpatched**. Typical targets are perimeter devices (VPNs, firewalls), externally reachable management/operations consoles, application servers, middleware, and frameworks (for example widely exploited WebLogic- or Struts-class software), and **auxiliary systems attached for partners, recruitment, or employees rather than the main service**. An autonomous agent enumerates the exposed surface automatically from its asset graph, then targets n-days with public exploits (PoCs) **before the patch is applied**, across hundreds of assets at once. The speed of this find-an-exposed-weakness-and-try-it loop is where the asymmetry with a human attacker opens up.
 
 - **Reduce the attack surface.** Continuously maintain an inventory of internet-exposed assets, management consoles, and auxiliary systems, and move anything that does not need to be external behind the internal network, a VPN, or an allowlist.
-- **Patch known vulnerabilities fast.** Disclosed vulnerabilities (n-days) in perimeter devices, web servers, application servers, and middleware are an autonomous agent's top target, so keep the patch-application interval as short as possible, starting with components that have public PoCs. To decide what to patch first, use a catalog of vulnerabilities with confirmed in-the-wild exploitation as a prioritization input: cross-reference the [CISA KEV (Known Exploited Vulnerabilities) catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) with the domestic advisories in 7.1 (KISA / Boho Nara). Relying on a living official list like this, rather than pinning specific CVE numbers in a document, keeps you from falling behind as an autonomous agent shifts to whichever n-day is circulating next.
+- **Patch known vulnerabilities fast.** Disclosed vulnerabilities (n-days) in perimeter devices, web servers, application servers, and middleware are an autonomous agent's top target, so keep the patch-application interval as short as possible, starting with components that have public PoCs. To decide what to patch first, use a catalog of vulnerabilities with confirmed in-the-wild exploitation as a prioritization input: cross-reference the [CISA KEV (Known Exploited Vulnerabilities) catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) with the official advisories in 7.1 (ThaiCERT / NCSA). Relying on a living official list like this, rather than pinning specific CVE numbers in a document, keeps you from falling behind as an autonomous agent shifts to whichever n-day is circulating next.
 - **Tighten interfaces that must stay exposed.** For management/operations interfaces you cannot avoid exposing, add source restrictions (IP allowlists), MFA, and a VPN to block unauthenticated enumeration itself.
 - **Manage auxiliary systems to the same standard as the main service.** Keep partner, recruitment, and employee auxiliary systems at the same patch and monitoring level as the main service. The entry point an autonomous agent works through is often one of these auxiliary paths rather than the main service. Hardening of the authentication flow itself continues in 3.2 below.
 
@@ -355,27 +355,28 @@ Static indicators (ports, User-Agents, markers) can be changed or deleted by an 
 
 ---
 
-## 7. Korean official channels: indicators, advisories, and reporting duties
+## 7. Thai official channels: indicators, advisories, and reporting duties
 
-Defending teams in Korea should take their indicators of compromise and security advisories from official channels, and, when an incident occurs, meet the reporting duties the law sets. Make the official sources below your first reference instead of circulating unofficial lists.
+Defending teams in Thailand should take their indicators of compromise and security advisories from official channels, and, when an incident occurs, meet the reporting duties the law sets. Make the official sources below your first reference instead of circulating unofficial lists.
 
 ### 7.1 Where to get indicators and advisories
 
-- **KISA (Korea Internet & Security Agency), via [Boho Nara / KrCERT/CC](https://www.boho.or.kr)**, publishes security advisories, vulnerability notices, and incident-response information, and shares threat intelligence across organizations through C-TAS (the Cyber Threat Analysis and Sharing system; unlike the open portal, C-TAS is shared among enrolled organizations and takes a separate application).
-- **[FSI (Financial Security Institute)](https://www.fsec.or.kr)** shares intrusion and threat information across the financial sector (the finance-sector ISAC). If you are in finance, watch this channel as well.
-- **[PIPC (Personal Information Protection Commission)](https://www.pipc.go.kr)** publishes the criteria for breach notification and the guidance on protective measures.
+- **[ThaiCERT](https://www.thaicert.or.th)**, operated by ETDA (the Electronic Transactions Development Agency), publishes security alerts and advisories and coordinates incident response in Thailand.
+- **[NCSA (National Cyber Security Agency)](https://www.ncsa.or.th)** is the agency behind the Cybersecurity Act B.E. 2562 (2019). It issues cyber-threat notices and is the body that organizations designated as Critical Information Infrastructure (CII) report to.
+- **[PDPC (Personal Data Protection Committee)](https://www.pdpc.or.th)** publishes guidance on the Personal Data Protection Act and the criteria for breach notification.
+- If you are in a regulated sector (banking, securities, insurance, telecoms, healthcare), also follow the advisories of your sector regulator, which often add their own incident rules.
 
 These channels are exactly what the section 5 hardening checklist means by "take official indicators of compromise from a trusted source." Even an official IoC is applied only after you review its validity window and false-blocking risk, the same principle explained in section 2, "Why IP-address blocking is a weak first line of defense."
 
-### 7.2 Reporting duties under Korean law
+### 7.2 Reporting duties under Thai law
 
-Because autonomous attacks spread fast, build the statutory reporting steps into your section 6 incident-response procedure in advance. The following is a summary; confirm the exact scope, deadlines, and conditions against each authority's current rules.
+Because autonomous attacks spread fast, build the statutory reporting steps into your section 6 incident-response procedure in advance. The following is a summary, not legal advice; confirm the exact scope, deadlines, and conditions against each authority's current rules.
 
-- **Personal-data breach:** under Article 34 of the Personal Information Protection Act, within 72 hours of becoming aware of the breach, report to the PIPC or KISA and notify the affected data subjects (the reporting conditions include a breach affecting 1,000 or more data subjects, a breach of sensitive or unique-identifier data, and a breach caused by unlawful external access).
-- **Security incident:** under the Network Act, an information and communications service provider reports the incident to the Ministry of Science and ICT and KISA (KrCERT/CC) within 24 hours of becoming aware of it.
-- **Financial companies:** under financial-sector supervisory rules you may additionally have to report to bodies such as the Financial Supervisory Service and FSI, so check those rules as well.
+- **Personal-data breach:** under the Personal Data Protection Act B.E. 2562 (2019), a data controller must notify the Office of the PDPC of a personal-data breach without delay and, where feasible, within 72 hours of becoming aware of it, unless the breach is unlikely to put individuals' rights and freedoms at risk. If the breach is likely to result in a high risk, the affected data subjects must also be told without delay, together with the remedial measures.
+- **Cyber threats and incidents at CII organizations:** under the Cybersecurity Act B.E. 2562 (2019), organizations designated as CII report cyber threats and incidents to the NCSA and to their regulatory body, following the procedures and timelines set by the Act's implementing rules.
+- **Regulated sectors:** supervisors such as the Bank of Thailand, the SEC, and the OIC can impose additional incident-notification duties on the institutions they oversee, so check those rules as well.
 
-To actually file: report a security incident through [Boho Nara](https://www.boho.or.kr) or by calling 118 with no area code (the KISA cyber help center), and a personal-data breach through the PIPC [personal-information portal](https://www.privacy.go.kr). The deadlines are short, so record the responsible owner and the contact path in your section 6 incident-response procedure in advance.
+To actually file: report a security incident through the incident-reporting channels of [ThaiCERT](https://www.thaicert.or.th) or the [NCSA](https://www.ncsa.or.th), and a personal-data breach through the Office of the [PDPC](https://www.pdpc.or.th). The deadlines are short, so record the responsible owner and the contact path in your section 6 incident-response procedure in advance.
 
 ---
 
@@ -383,7 +384,7 @@ To actually file: report a security incident through [Boho Nara](https://www.boh
 
 - Upstream project: [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX) (AGPL-3.0 · currently unreachable, checked 2026-10). This document is the defensive material of its global-edition repository.
 - The top-level [README security and misuse warning, scope of use, and legal notice](../README.md).
-- This edition is localized for Korea; where personal data is involved, Korean law (the Network Act and the Personal Information Protection Act) applies. Unauthorized testing is a crime in most jurisdictions regardless — always secure written authorization and an agreed scope first.
+- The legal examples in this guide use Thailand (the Computer Crime Act B.E. 2550 and the Personal Data Protection Act B.E. 2562); check the law of wherever you operate. Unauthorized testing is a crime in most jurisdictions regardless — always secure written authorization and an agreed scope first.
 - Standard references for general web-security hardening: [OWASP Top 10](https://owasp.org/www-project-top-ten/), [OWASP ASVS (Application Security Verification Standard)](https://owasp.org/www-project-application-security-verification-standard/), [OWASP API Security Top 10](https://api-security.owasp.org/).
 
 > This guide is continually expanded to support defense and detection capability. Suggestions for additional detection rules or hardening items are welcome as repository issues.

@@ -1,14 +1,14 @@
-// 지원 locale 과 기본값. artex-global 은 영어를 기본으로 하고, 한국어·중국어·스페인어·일본어·태국어를
-// 더해 여섯 언어를 사용자 설정으로 전환할 수 있다. 중국어("zh")는 상류 원문 대조용으로도 함께 둔다.
+// Supported locales and the default. artex-global defaults to English and adds Korean, Chinese, Spanish, Japanese and Thai,
+// so six languages can be switched via user settings. Chinese ("zh") is also kept for comparison with the upstream original.
 export const LOCALES = ["en", "ko", "zh", "es", "ja", "th"] as const;
 export type Locale = (typeof LOCALES)[number];
 
-// 기본 표시 언어는 영어다. 한국어·중국어·스페인어·일본어·태국어는 설정으로 전환하는 언어다. 빌드 시
-// NEXT_PUBLIC_LOCALE 로 덮어쓸 수 있고, 실행 중에는 사용자가 설정 화면에서 고른 값(쿠키·localStorage)이 최종 결정권을 가진다.
+// The default display language is English. Korean, Chinese, Spanish, Japanese and Thai are languages switched via settings. It can be overridden at build time with
+// NEXT_PUBLIC_LOCALE, and at runtime the value the user picks on the settings screen (cookie/localStorage) has the final say.
 export const DEFAULT_LOCALE: Locale = "en";
 
-// 언어 선택기에 보여 주는 각 locale 의 자국어 표기. 어떤 언어로 보고 있든 자기 언어
-// 이름은 그 언어로 읽혀야 하므로 번역 대상이 아니라 고정 표기로 둔다.
+// The native-language name of each locale shown in the language selector. Whatever language is being viewed, a language's own
+// name must read in that language, so it is a fixed label rather than a translation target.
 export const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
   ko: "한국어",
@@ -18,20 +18,20 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   th: "ไทย",
 };
 
-// 사용자가 고른 표시 언어를 저장하는 키. 화면은 localStorage 값을 읽는다. 쿠키에도 같은
-// 값을 써 두지만 지금은 읽는 곳이 없다(서버가 언어를 판별해야 할 때를 위해 남겨 둔다).
+// Key that stores the display language the user picked. The UI reads the localStorage value. The same value is also
+// written to a cookie, but nothing reads it for now (kept for when the server needs to determine the language).
 export const LOCALE_COOKIE = "artex_locale";
 export const LOCALE_STORAGE_KEY = "artex_locale";
 
-// 임의 문자열이 지원 locale 인지 좁혀 주는 가드.
+// Guard that narrows an arbitrary string to a supported locale.
 export function isLocale(raw: unknown): raw is Locale {
   return typeof raw === "string" && (LOCALES as readonly string[]).includes(raw);
 }
 
-// 활성 locale 을 빌드 시점에 결정한다. 정적 내보내기(next.config 의 output: "export")와
-// 호환되어야 하므로 cookies()·headers() 같은 동적 API 를 쓰지 않고 환경변수만 읽는다.
-// NEXT_PUBLIC_LOCALE 이 비었거나 지원 목록 밖이면 기본값으로 떨어진다. 이 값은 서버
-// 프리렌더의 초기 HTML 에만 쓰이고, 실제 사용자 표시 언어는 클라이언트에서 쿠키로 덮는다.
+// Decide the active locale at build time. It must be compatible with static export (output: "export" in next.config),
+// so it does not use dynamic APIs such as cookies()/headers() and reads only environment variables.
+// If NEXT_PUBLIC_LOCALE is empty or outside the supported list, it falls back to the default. This value is used only in the server
+// prerender's initial HTML, and the actual user display language is overridden on the client by the cookie.
 export function resolveLocale(): Locale {
   const raw = process.env.NEXT_PUBLIC_LOCALE;
   return isLocale(raw) ? raw : DEFAULT_LOCALE;

@@ -59,7 +59,7 @@ func TestInterceptMessagesLocalized(t *testing.T) {
 }
 
 // TestJudgeActionLabelLocalized checks the three judge verdict labels are Korean
-// (허용 / 차단 / 확인 요청, per the glossary) and that an unknown action still
+// (allow / deny / request confirmation, per the glossary) and that an unknown action still
 // passes through untranslated.
 func TestJudgeActionLabelLocalized(t *testing.T) {
 	for _, action := range []string{"allow", "deny", "ask"} {
@@ -87,7 +87,7 @@ func TestDefaultMessageLocalized(t *testing.T) {
 
 // TestToolApprovalSummaryLocalized checks the activity summary is Korean and stays
 // parseable by transcript.tsx, which extracts the pending id via /\(#(\d+)\)/ and
-// the tool name via /도구\s+(\S+)\s+승인/.
+// the tool name via a "tool <name> approval" regex (Korean wording).
 func TestToolApprovalSummaryLocalized(t *testing.T) {
 	s := fmt.Sprintf(msgToolApprovalRequestFmt, "Bash", 42)
 	assertKorean(t, "msgToolApprovalRequestFmt", s)

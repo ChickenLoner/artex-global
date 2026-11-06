@@ -8,12 +8,12 @@ import (
 	"testing"
 )
 
-// findings_groups.go 의 사용자 노출 문구를 한국어로 유지하는 회귀 방어 테스트다.
-// 한국어 판정은 F3a 가 만든 assertKoreanError(한글 포함·중국어 한자 0)를 재사용한다.
+// A regression-guard test that keeps the user-facing wording of findings_groups.go in Korean.
+// The Korean check reuses assertKoreanError created by F3a (contains Hangul, zero Chinese Han characters).
 
-// TestDeepenFindingBodyTooLargeLocalized 는 본문 초과(413) 응답이 한국어임을 실제 HTTP 로
-// 확인한다. 이 경로는 MaxBytesReader 디코드 단계에서 반환되어 s.m.pg(DB) 에 닿기 전에 끝나므로
-// 빈 Server 로도 끝까지 돈다.
+// TestDeepenFindingBodyTooLargeLocalized verifies over a real HTTP request that the body-too-large (413) response is in Korean.
+// This path returns in the MaxBytesReader decode stage and finishes before touching s.m.pg (the DB),
+// so it runs to completion even with an empty Server.
 func TestDeepenFindingBodyTooLargeLocalized(t *testing.T) {
 	s := &Server{}
 	body := `{"description":"` + strings.Repeat("a", 33<<10) + `"}`
@@ -38,10 +38,10 @@ func TestDeepenFindingBodyTooLargeLocalized(t *testing.T) {
 	assertKoreanError(t, "body_too_large", resp.Error)
 }
 
-// TestFindingFollowUpAuditSummaryLocalized 는 후속 의도 활동 요약 상수가 한국어임을 단언한다.
-// 이 요약을 저장하는 AddFindingFollowUpIntent 는 DB 트랜잭션이 필요해 DB 없는 이 호스트에서
-// 끝까지 못 도므로 상수 자체를 단언한다. 이 문구는 에이전트가 읽는 의도 payload(사용자가
-// 입력한 description)와 분리된, 활동 타임라인 표시 전용 요약이다.
+// TestFindingFollowUpAuditSummaryLocalized asserts that the follow-up intent activity summary constant is in Korean.
+// AddFindingFollowUpIntent, which stores this summary, needs a DB transaction and cannot run to completion on this host without a DB,
+// so the constant itself is asserted. This wording is a summary used only for the activity timeline display, separate from the intent payload
+// read by agents (the description entered by the user).
 func TestFindingFollowUpAuditSummaryLocalized(t *testing.T) {
 	assertKoreanError(t, "follow_up_summary", auditFindingFollowUpSummary)
 }

@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// asciiStatusChangeItem 은 한자가 없는(ASCII) 상태 변경 항목을 만든다.
-// 라벨이 중국어로 되돌아가면 렌더 결과에 한자가 생기므로, 데이터가 한자 0 일 때만
-// "출력 전체 한자 0" 단언이 라벨 회귀를 정확히 잡아낸다.
+// asciiStatusChangeItem builds a status-change item with no Han characters (ASCII).
+// If a label regresses to Chinese, the rendered result gains Han characters, so only when the data has zero Han characters
+// can the "zero Han characters in the whole output" assertion catch a label regression precisely.
 func asciiStatusChangeItem() Item {
 	return Item{
 		FindingID:  7,
@@ -34,10 +34,10 @@ func mustJSON(t *testing.T, v any) string {
 	return string(b)
 }
 
-// TestFeishuItemLinesLocalized 는 飞书 카드 단건 본문의 필드 라벨(상태 변경·유형·
-// 자산·개요)이 한국어이고 markdown.go(F4②)와 글자까지 같은지 검사한다. feishu.go 는
-// 이 라벨의 자기 복사본(markdown 3채널 공유 함수가 아님)을 쓰므로, 공유 함수 회귀와
-// 별개로 이 핀이 있어야 飞书 본문만 중국어로 되돌아가는 회귀를 잡는다.
+// TestFeishuItemLinesLocalized checks that the field labels (status change / type /
+// asset / overview) of the Feishu card single-item body are Korean and identical to markdown.go (F4②) down to the character. feishu.go uses
+// its own copy of these labels (not the function shared by the three markdown channels), so, independent of a regression in the shared function,
+// this pin is needed to catch a regression where only the Feishu body reverts to Chinese.
 func TestFeishuItemLinesLocalized(t *testing.T) {
 	got := feishuItemLines(asciiStatusChangeItem())
 	assertKorean(t, "feishuItemLines", got)
@@ -53,10 +53,10 @@ func TestFeishuItemLinesLocalized(t *testing.T) {
 	}
 }
 
-// TestFeishuCardButtonsLocalized 는 飞书 카드 버튼 라벨(상세 보기·플랫폼에서 전체 보기)이
-// 한국어인지, 카드 전체에 중국어 한자가 없는지(ASCII 데이터 기준) 검사한다.
+// TestFeishuCardButtonsLocalized checks that the Feishu card button labels (view details / view all on the platform) are
+// Korean, and that the whole card has no Chinese Han characters (based on ASCII data).
 func TestFeishuCardButtonsLocalized(t *testing.T) {
-	// 단건: "상세 보기" 버튼(DetailURL 있을 때)
+	// Single item: the "View details" button (when DetailURL is present)
 	single, _ := feishuCard(Message{Items: []Item{asciiStatusChangeItem()}})
 	singleJSON := mustJSON(t, single)
 	if hasHan(singleJSON) {
@@ -66,7 +66,7 @@ func TestFeishuCardButtonsLocalized(t *testing.T) {
 		t.Errorf("단건 飞书 카드에 '상세 보기' 버튼이 있어야 합니다:\n%s", singleJSON)
 	}
 
-	// 다건: "플랫폼에서 전체 보기" 버튼(HomeURL 있을 때)
+	// Multiple items: the "View all on the platform" button (when HomeURL is present)
 	batch, _ := feishuCard(Message{Batch: true, HomeURL: "https://platform.example", Items: hanFreeItems(2)})
 	batchJSON := mustJSON(t, batch)
 	if hasHan(batchJSON) {
@@ -77,8 +77,8 @@ func TestFeishuCardButtonsLocalized(t *testing.T) {
 	}
 }
 
-// TestDingTalkActionCardButtonLocalized 는 钉钉 ActionCard 의 "상세 보기" 버튼(singleTitle)이
-// 한국어인지 실제 Send 경로(가짜 수신단)로 검사한다.
+// TestDingTalkActionCardButtonLocalized checks, through the real Send path (a fake receiver), that the DingTalk ActionCard "View details" button (singleTitle)
+// is Korean.
 func TestDingTalkActionCardButtonLocalized(t *testing.T) {
 	var singleTitle string
 	srv := capturePost(t, `{"errcode":0,"errmsg":"ok"}`, func(_ *testing.T, body map[string]any, _ *http.Request) {
@@ -94,8 +94,8 @@ func TestDingTalkActionCardButtonLocalized(t *testing.T) {
 	}
 }
 
-// TestChinaPlatformValidateLocalized 는 钉钉·飞书·企业微信 설정 검증 오류가 한국어이고
-// "Webhook" 표기를 유지하는지 검사한다(알림 설정 저장·테스트 API 가 사용자에게 노출).
+// TestChinaPlatformValidateLocalized checks that the DingTalk / Feishu / WeCom config validation errors are Korean
+// and keep the "Webhook" spelling (the notification settings save / test API exposes them to users).
 func TestChinaPlatformValidateLocalized(t *testing.T) {
 	for _, kind := range []string{KindDingTalk, KindFeishu, KindWeCom} {
 		ch, ok := Get(kind)
@@ -103,7 +103,7 @@ func TestChinaPlatformValidateLocalized(t *testing.T) {
 			t.Fatalf("%s 채널이 등록되어 있지 않습니다", kind)
 		}
 
-		// 빈 설정: "Webhook 주소가 없습니다"
+		// Empty config: "Webhook address is missing"
 		missing := ch.Validate(map[string]any{})
 		if missing == nil {
 			t.Fatalf("%s: 빈 설정은 검증에 실패해야 합니다", kind)
@@ -113,7 +113,7 @@ func TestChinaPlatformValidateLocalized(t *testing.T) {
 			t.Errorf("%s: 누락 오류는 'Webhook 주소가 없습니다' 여야 합니다, 받은 값 %q", kind, missing)
 		}
 
-		// 잘못된 주소(ftp): "Webhook 주소가 올바르지 않습니다: …"
+		// Invalid address (ftp): "Webhook address is invalid: …"
 		bad := ch.Validate(map[string]any{"webhook": "ftp://x"})
 		if bad == nil {
 			t.Fatalf("%s: ftp 주소는 검증에 실패해야 합니다", kind)
@@ -127,12 +127,12 @@ func TestChinaPlatformValidateLocalized(t *testing.T) {
 	}
 }
 
-// TestChinaPlatformSendErrorsLocalized 는 钉钉·飞书·企业微信 발송 실패 사유가 한국어로
-// 투递 이력(last_error)에 남는지 검사한다. 플랫폼 이름은 UI 채널 라벨(DingTalk/Feishu/
-// WeCom)과 맞춘다. 서버 errmsg 는 ASCII 이므로 오류에 한자가 보이면 골격 문구가
-// 중국어로 회귀한 것이다.
+// TestChinaPlatformSendErrorsLocalized checks that DingTalk / Feishu / WeCom send-failure reasons are left in Korean in the
+// delivery history (last_error). Platform names match the UI channel labels (DingTalk/Feishu/
+// WeCom). The server errmsg is ASCII, so if Han characters appear in an error, the skeleton wording has
+// regressed to Chinese.
 func TestChinaPlatformSendErrorsLocalized(t *testing.T) {
-	// 업무 오류 코드(HTTP 200 + body 의 errcode/code != 0) 경로.
+	// Business error code path (HTTP 200 + errcode/code != 0 in the body).
 	bizCases := []struct {
 		kind     string
 		resp     string
@@ -163,7 +163,7 @@ func TestChinaPlatformSendErrorsLocalized(t *testing.T) {
 		}
 	}
 
-	// 응답이 JSON 이 아닐 때의 파싱 실패 경로: "<플랫폼> 응답을 해석하지 못했습니다".
+	// Parse-failure path when the response is not JSON: "<platform> response could not be interpreted".
 	parseCases := []struct {
 		kind     string
 		platform string
