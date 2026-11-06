@@ -24,11 +24,9 @@ testing **autonomously**. Contributors are bound by the same scope limits as use
   intentionally vulnerable target you own, such as OWASP Juice Shop or DVWA launched with Docker).
 - We do not accept code that scans, probes, or exploits real, production, or remote systems
   outside the authorized scope, nor changes that encourage such use.
-- Unauthorized access to, or disruption of, another party's computer systems is a criminal
-  offense in most jurisdictions (for example under the US Computer Fraud and Abuse Act, the UK
-  Computer Misuse Act 1990, EU Directive 2013/40/EU, and Thailand's Computer Crime Act), and any
-  personal data collected or exposed falls under data-protection law (for example the EU GDPR or
-  Thailand's PDPA). The
+- In Thailand, accessing or disrupting another party's computer system without authorization
+  is an offense under the Computer Crime Act B.E. 2550 (2007), and any personal data collected
+  or exposed falls under the Personal Data Protection Act B.E. 2562 (2019). The
   full notice is in the [README](README.md#️-read-first--authorized-use-and-legal-notice).
 
 Legal responsibility for how the code or documentation you contribute is used rests with the
