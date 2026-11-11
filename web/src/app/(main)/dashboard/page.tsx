@@ -44,18 +44,19 @@ import { cn } from "@/lib/utils";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-// Compact relative time. Returns the "{n}{unit}" fragment, or null when there is
-// no timestamp; the caller wraps it with the localized "{value} ago" suffix.
-function fmtRel(ts?: string | number): string | null {
+// Relative time as a unit + count; the caller picks the localized "{count} ago" message
+// for that unit. Returns null when there is no timestamp.
+type RelUnit = "agoSeconds" | "agoMinutes" | "agoHours" | "agoDays";
+function fmtRel(ts?: string | number): { key: RelUnit; count: number } | null {
   if (!ts) return null;
   const ms = Date.now() - (typeof ts === "number" ? ts * 1000 : Date.parse(ts as string));
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s`;
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return { key: "agoSeconds", count: s };
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m`;
+  if (m < 60) return { key: "agoMinutes", count: m };
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
+  if (h < 24) return { key: "agoHours", count: h };
+  return { key: "agoDays", count: Math.floor(h / 24) };
 }
 
 function fmtTokens(n: number): string {
@@ -120,7 +121,7 @@ export default function DashboardPage() {
   const tStatus = useTranslations("status");
   const rel = (ts?: string | number) => {
     const v = fmtRel(ts);
-    return v === null ? "—" : t("ago", { value: v });
+    return v === null ? "—" : t(v.key, { count: v.count });
   };
   const dailyTrendConfig = React.useMemo(
     () =>
